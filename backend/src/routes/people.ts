@@ -79,7 +79,7 @@ router.put('/:id', requireAdminPin, async (req, res) => {
 
   try {
     const person = await prisma.person.update({
-      where: { id },
+      where: { id: id as string },
       data: {
         name: name.trim(),
       },
@@ -98,7 +98,7 @@ router.delete('/:id', requireAdminPin, async (req, res) => {
 
   try {
     await prisma.person.delete({
-      where: { id },
+      where: { id: id as string },
     });
 
     res.json({ success: true });

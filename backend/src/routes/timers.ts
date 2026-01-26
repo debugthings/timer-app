@@ -334,13 +334,13 @@ router.put('/:id', requireAdminPin, async (req, res) => {
       // If schedules are provided, delete existing and create new ones
       if (schedules !== undefined) {
         await tx.timerSchedule.deleteMany({
-          where: { timerId: id },
+          where: { timerId: id as string },
         });
 
         if (schedules.length > 0) {
           await tx.timerSchedule.createMany({
             data: schedules.map((s: { dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }) => ({
-              timerId: id,
+              timerId: id as string,
               dayOfWeek: s.dayOfWeek,
               seconds: s.seconds,
               startTime: s.startTime || null,
@@ -351,7 +351,7 @@ router.put('/:id', requireAdminPin, async (req, res) => {
       }
 
       return tx.timer.update({
-        where: { id },
+        where: { id: id as string },
         data: updateData,
         include: {
           person: true,
@@ -382,7 +382,7 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
 
   try {
     const timer = await prisma.timer.findUnique({
-      where: { id },
+      where: { id: id as string },
     });
 
     if (!timer) {
@@ -395,7 +395,7 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
     const allocation = await prisma.dailyAllocation.upsert({
       where: {
         timerId_date: {
-          timerId: id,
+          timerId: id as string,
           date: targetDate,
         },
       },
@@ -403,7 +403,7 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
         totalSeconds,
       },
       create: {
-        timerId: id,
+        timerId: id as string,
         date: targetDate,
         totalSeconds,
         usedSeconds: 0,
@@ -447,7 +447,7 @@ router.delete('/:id', requireAdminPin, async (req, res) => {
 
   try {
     await prisma.timer.delete({
-      where: { id },
+      where: { id: id as string },
     });
 
     res.json({ success: true });
