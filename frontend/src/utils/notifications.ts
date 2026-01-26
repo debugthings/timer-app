@@ -82,3 +82,82 @@ export function playCompletionSound(): void {
     console.error('Failed to play sound:', error);
   }
 }
+
+// Continuous alarm system
+let alarmInterval: number | null = null;
+let alarmAudioContext: AudioContext | null = null;
+
+export function startContinuousAlarm(): void {
+  if (alarmInterval) {
+    return; // Already playing
+  }
+
+  try {
+    alarmAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    const playAlarmBeep = () => {
+      if (!alarmAudioContext) return;
+      
+      // Create oscillator for alarm sound
+      const oscillator = alarmAudioContext.createOscillator();
+      const gainNode = alarmAudioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(alarmAudioContext.destination);
+      
+      // More urgent alarm sound
+      oscillator.frequency.value = 880; // A5 note
+      oscillator.type = 'square'; // More attention-grabbing sound
+      
+      // Quick fade in and out
+      gainNode.gain.setValueAtTime(0, alarmAudioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.4, alarmAudioContext.currentTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, alarmAudioContext.currentTime + 0.3);
+      
+      oscillator.start(alarmAudioContext.currentTime);
+      oscillator.stop(alarmAudioContext.currentTime + 0.3);
+      
+      // Second beep in the pattern
+      setTimeout(() => {
+        if (!alarmAudioContext) return;
+        
+        const oscillator2 = alarmAudioContext.createOscillator();
+        const gainNode2 = alarmAudioContext.createGain();
+        
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(alarmAudioContext.destination);
+        
+        oscillator2.frequency.value = 1108; // C#6 note (higher)
+        oscillator2.type = 'square';
+        
+        gainNode2.gain.setValueAtTime(0, alarmAudioContext.currentTime);
+        gainNode2.gain.linearRampToValueAtTime(0.4, alarmAudioContext.currentTime + 0.05);
+        gainNode2.gain.linearRampToValueAtTime(0, alarmAudioContext.currentTime + 0.3);
+        
+        oscillator2.start(alarmAudioContext.currentTime);
+        oscillator2.stop(alarmAudioContext.currentTime + 0.3);
+      }, 350);
+    };
+    
+    // Play immediately
+    playAlarmBeep();
+    
+    // Then repeat every 1.5 seconds
+    alarmInterval = window.setInterval(playAlarmBeep, 1500);
+    
+  } catch (error) {
+    console.error('Failed to start alarm:', error);
+  }
+}
+
+export function stopContinuousAlarm(): void {
+  if (alarmInterval) {
+    clearInterval(alarmInterval);
+    alarmInterval = null;
+  }
+  
+  if (alarmAudioContext) {
+    alarmAudioContext.close();
+    alarmAudioContext = null;
+  }
+}

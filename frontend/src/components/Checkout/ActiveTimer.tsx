@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Checkout } from '../../types';
 import { formatTime } from '../../utils/time';
 import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
-import { showNotification, playCompletionSound } from '../../utils/notifications';
+import { showNotification, startContinuousAlarm, stopContinuousAlarm } from '../../utils/notifications';
 import { useTimerExpiration } from '../../hooks/useTimerExpiration';
 
 interface ActiveTimerProps {
@@ -14,6 +14,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(checkout.usedSeconds);
   const [isRunning, setIsRunning] = useState(checkout.status === 'ACTIVE');
   const [loading, setLoading] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
   const hasNotifiedRef = useRef(false);
   const autoPausingRef = useRef(false); // Prevent multiple auto-pause attempts
@@ -31,6 +32,13 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
     hasNotifiedRef.current = false;
     autoPausingRef.current = false;
   }, [checkout.id, checkout.usedSeconds, checkout.status]);
+
+  // Cleanup alarm on unmount
+  useEffect(() => {
+    return () => {
+      stopContinuousAlarm();
+    };
+  }, []);
 
   const handlePause = useCallback(async () => {
     // Prevent double-clicks and concurrent operations
@@ -67,10 +75,11 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           // Auto-stop when time runs out
           setElapsedSeconds(checkout.allocatedSeconds);
           
-          // Show notification and play sound (only once)
+          // Show notification, alarm, and modal (only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            playCompletionSound();
+            startContinuousAlarm();
+            setShowAlarmModal(true);
             showNotification('Timer Complete!', {
               body: 'Your checkout time has ended.',
               requireInteraction: true,
@@ -94,8 +103,9 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   // Handle timer expiration
   useEffect(() => {
     if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
-      // Timer expired, show notification
-      playCompletionSound();
+      // Timer expired, show notification and alarm
+      startContinuousAlarm();
+      setShowAlarmModal(true);
       showNotification('Timer Expired', {
         body: 'This timer has expired for today and has been stopped.',
         requireInteraction: true,
@@ -103,6 +113,11 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       onUpdate(); // Refresh to show cancelled status
     }
   }, [isExpired, checkout.status, checkout.id, onUpdate]);
+
+  const handleAcknowledgeAlarm = () => {
+    stopContinuousAlarm();
+    setShowAlarmModal(false);
+  };
 
   const handleStart = async () => {
     // Prevent double-clicks
@@ -207,6 +222,31 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       {checkout.status === 'CANCELLED' && (
         <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-center">
           Checkout cancelled
+        </div>
+      )}
+
+      {/* Alarm Acknowledgment Modal */}
+      {showAlarmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
+            <div className="text-center">
+              <div className="text-6xl mb-4">⏰</div>
+              <h2 className="text-3xl font-bold text-red-600 mb-4">
+                {isExpired ? 'Timer Expired!' : 'Time\'s Up!'}
+              </h2>
+              <p className="text-lg text-gray-700 mb-6">
+                {isExpired 
+                  ? 'This timer has expired for today.'
+                  : 'Your checkout time has ended.'}
+              </p>
+              <button
+                onClick={handleAcknowledgeAlarm}
+                className="w-full px-6 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Acknowledge
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
