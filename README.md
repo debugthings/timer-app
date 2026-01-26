@@ -297,7 +297,16 @@ npx prisma migrate deploy
 chown -R timer-app:timer-app /opt/timer-app
 ```
 
-#### 5. Create Systemd Service
+#### 5. Copy Deployment Script
+
+```bash
+# Copy the auto-deploy script
+cp /tmp/timer-app/deploy.sh /opt/timer-app/
+chmod +x /opt/timer-app/deploy.sh
+chown root:root /opt/timer-app/deploy.sh
+```
+
+#### 6. Create Systemd Service
 
 ```bash
 # Create service file
@@ -310,8 +319,11 @@ After=network.target
 Type=simple
 User=timer-app
 WorkingDirectory=/opt/timer-app
+# Pull latest code, build, and deploy before starting
+ExecStartPre=/opt/timer-app/deploy.sh
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
+RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=3001
 Environment=DATABASE_URL=file:/opt/timer-app/data/timer.db
@@ -331,7 +343,9 @@ systemctl start timer-app
 systemctl status timer-app
 ```
 
-#### 6. Verify Installation
+**Note:** The service includes `ExecStartPre=/opt/timer-app/deploy.sh` which automatically pulls the latest code and builds it every time the service starts. Remove this line if you want to manage deployments manually.
+
+#### 7. Verify Installation
 
 ```bash
 # Check if service is running
@@ -371,51 +385,65 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Update Deployed Application
+### Automatic Updates
 
-To update an existing installation:
+The systemd service is configured to **automatically pull, build, and deploy** the latest code from GitHub every time it starts.
+
+**To update to the latest version:**
 
 ```bash
-# Stop the service
-systemctl stop timer-app
+# Simply restart the service - it will automatically update
+sudo systemctl restart timer-app
 
-# Backup database
-cp /opt/timer-app/data/timer.db /opt/timer-app/data/timer.db.backup
+# Check logs to see the deployment process
+sudo journalctl -u timer-app -f
+```
 
-# Clone latest version
-cd /tmp
-rm -rf timer-app
-git clone https://github.com/debugthings/timer-app.git
-cd timer-app
+The deployment process:
+1. ✅ Clones latest code from GitHub
+2. ✅ Builds frontend and backend
+3. ✅ Backs up current deployment
+4. ✅ Deploys new files
+5. ✅ Runs database migrations
+6. ✅ Starts the service
 
-# Build frontend
-cd frontend
-npm install
-npm run build
+**Manual deployment** (if needed):
 
-# Build backend
-cd ../backend
-npm install
-npm run build
+```bash
+# Run the deployment script manually
+sudo /opt/timer-app/deploy.sh
 
-# Update application files
-rm -rf /opt/timer-app/dist
-rm -rf /opt/timer-app/public
-cp -r dist /opt/timer-app/
-cp -r public /opt/timer-app/ || mkdir -p /opt/timer-app/public
-cp -r ../frontend/dist/* /opt/timer-app/public/
+# Then start the service
+sudo systemctl start timer-app
+```
 
-# Run database migrations
-cd /opt/timer-app
-export DATABASE_URL="file:/opt/timer-app/data/timer.db"
-npx prisma generate
-npx prisma migrate deploy
+**Disable auto-update** (optional):
 
-# Restart service
-systemctl start timer-app
+If you want to disable automatic updates and manage deployments manually:
 
-# Check status
-systemctl status timer-app
+```bash
+# Edit the service file
+sudo nano /etc/systemd/system/timer-app.service
+
+# Remove or comment out this line:
+# ExecStartPre=/opt/timer-app/deploy.sh
+
+# Reload systemd
+sudo systemctl daemon-reload
+```
+
+### Database Backups
+
+Before updating, the system automatically backs up deployments. For database backups:
+
+```bash
+# Manual backup
+sudo cp /opt/timer-app/data/timer.db /opt/timer-app/data/timer.db.backup.$(date +%Y%m%d)
+
+# Restore from backup
+sudo systemctl stop timer-app
+sudo cp /opt/timer-app/data/timer.db.backup.YYYYMMDD /opt/timer-app/data/timer.db
+sudo systemctl start timer-app
 ```
 
 ## Usage

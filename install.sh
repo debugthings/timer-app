@@ -92,6 +92,10 @@ cp -r node_modules /opt/timer-app/
 cp -r prisma /opt/timer-app/
 cp package*.json /opt/timer-app/
 
+# Copy deploy script
+cp ../deploy.sh /opt/timer-app/
+chmod +x /opt/timer-app/deploy.sh
+
 # Create production .env file
 cat > /opt/timer-app/.env << 'ENVEOF'
 DATABASE_URL="file:/opt/timer-app/data/timer.db"
@@ -124,8 +128,11 @@ After=network.target
 Type=simple
 User=timer-app
 WorkingDirectory=/opt/timer-app
+# Pull latest code, build, and deploy before starting
+ExecStartPre=/opt/timer-app/deploy.sh
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
+RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=3001
 Environment=DATABASE_URL=file:/opt/timer-app/data/timer.db

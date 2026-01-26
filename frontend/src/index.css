@@ -7,7 +7,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: light;
   color: rgba(0, 0, 0, 0.87);
   background-color: #ffffff;
 
@@ -34,6 +34,17 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+}
+
+/* Fix for Safari black input boxes */
+input,
+textarea,
+select {
+  background-color: white;
+  color: rgba(0, 0, 0, 0.87);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 input[type="range"] {
