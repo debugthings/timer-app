@@ -1,0 +1,214 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Checkout } from '../../types';
+import { formatTime } from '../../utils/time';
+import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
+import { showNotification, playCompletionSound } from '../../utils/notifications';
+import { useTimerExpiration } from '../../hooks/useTimerExpiration';
+
+interface ActiveTimerProps {
+  checkout: Checkout;
+  onUpdate: () => void;
+}
+
+export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(checkout.usedSeconds);
+  const [isRunning, setIsRunning] = useState(checkout.status === 'ACTIVE');
+  const [loading, setLoading] = useState(false);
+  const operationInProgress = useRef(false); // Prevent double-clicks
+  const hasNotifiedRef = useRef(false);
+  const autoPausingRef = useRef(false); // Prevent multiple auto-pause attempts
+  const isExpired = useTimerExpiration(checkout.timerId);
+
+  const remainingSeconds = checkout.allocatedSeconds - elapsedSeconds;
+  const hasActiveEntry = checkout.entries?.some((e) => !e.endTime);
+
+  // Sync local elapsed seconds with server data when checkout changes
+  // This handles cases where you navigate away and come back
+  useEffect(() => {
+    setElapsedSeconds(checkout.usedSeconds);
+    setIsRunning(checkout.status === 'ACTIVE');
+    // Reset notification flag when checkout changes
+    hasNotifiedRef.current = false;
+    autoPausingRef.current = false;
+  }, [checkout.id, checkout.usedSeconds, checkout.status]);
+
+  const handlePause = useCallback(async () => {
+    // Prevent double-clicks and concurrent operations
+    if (operationInProgress.current || loading) return;
+    operationInProgress.current = true;
+    setLoading(true);
+    
+    try {
+      await pauseCheckout(checkout.id);
+      setIsRunning(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to pause timer:', error);
+    } finally {
+      setLoading(false);
+      operationInProgress.current = false;
+    }
+  }, [checkout.id, loading, onUpdate]);
+
+  // Calculate real-time elapsed seconds for active timers
+  useEffect(() => {
+    if (isRunning && hasActiveEntry) {
+      const activeEntry = checkout.entries?.find((e) => !e.endTime);
+      if (!activeEntry) return;
+
+      const interval = setInterval(() => {
+        // Calculate elapsed time from the entry's start time
+        const now = new Date();
+        const startTime = new Date(activeEntry.startTime);
+        const entryElapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        const totalElapsed = checkout.usedSeconds + entryElapsed;
+
+        if (totalElapsed >= checkout.allocatedSeconds) {
+          // Auto-stop when time runs out
+          setElapsedSeconds(checkout.allocatedSeconds);
+          
+          // Show notification and play sound (only once)
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            playCompletionSound();
+            showNotification('Timer Complete!', {
+              body: 'Your checkout time has ended.',
+              requireInteraction: true,
+            });
+          }
+          
+          // Auto-pause (only once, prevent race condition)
+          if (!autoPausingRef.current) {
+            autoPausingRef.current = true;
+            handlePause();
+          }
+        } else {
+          setElapsedSeconds(totalElapsed);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isRunning, hasActiveEntry, checkout.allocatedSeconds, checkout.usedSeconds, checkout.entries, checkout.id, handlePause]);
+
+  // Handle timer expiration
+  useEffect(() => {
+    if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
+      // Timer expired, show notification
+      playCompletionSound();
+      showNotification('Timer Expired', {
+        body: 'This timer has expired for today and has been stopped.',
+        requireInteraction: true,
+      });
+      onUpdate(); // Refresh to show cancelled status
+    }
+  }, [isExpired, checkout.status, checkout.id, onUpdate]);
+
+  const handleStart = async () => {
+    // Prevent double-clicks
+    if (operationInProgress.current || loading) return;
+    operationInProgress.current = true;
+    setLoading(true);
+    
+    try {
+      await startCheckout(checkout.id);
+      setIsRunning(true);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to start timer:', error);
+    } finally {
+      setLoading(false);
+      operationInProgress.current = false;
+    }
+  };
+
+  const handleStop = async () => {
+    // Prevent double-clicks
+    if (operationInProgress.current || loading) return;
+    if (!confirm('Stop this checkout and return unused time?')) return;
+
+    operationInProgress.current = true;
+    setLoading(true);
+    
+    try {
+      await stopCheckout(checkout.id);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to stop timer:', error);
+    } finally {
+      setLoading(false);
+      operationInProgress.current = false;
+    }
+  };
+
+  const progressPercent = (elapsedSeconds / checkout.allocatedSeconds) * 100;
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-semibold mb-4">Active Checkout</h3>
+
+      {/* Progress bar */}
+      <div className="mb-4">
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Time display */}
+      <div className="text-center mb-6">
+        <div className="text-5xl font-bold mb-2">{formatTime(remainingSeconds)}</div>
+        <div className="text-gray-600">
+          {formatTime(elapsedSeconds)} used of {formatTime(checkout.allocatedSeconds)}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex gap-3">
+        {!hasActiveEntry && checkout.status !== 'COMPLETED' && checkout.status !== 'CANCELLED' && (
+          <button
+            onClick={handleStart}
+            disabled={loading || remainingSeconds <= 0}
+            className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium"
+          >
+            {loading ? 'Starting...' : 'Start'}
+          </button>
+        )}
+
+        {hasActiveEntry && isRunning && (
+          <button
+            onClick={handlePause}
+            disabled={loading}
+            className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium"
+          >
+            {loading ? 'Pausing...' : 'Pause'}
+          </button>
+        )}
+
+        {checkout.status !== 'COMPLETED' && checkout.status !== 'CANCELLED' && (
+          <button
+            onClick={handleStop}
+            disabled={loading}
+            className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-medium"
+          >
+            {loading ? 'Stopping...' : 'Stop'}
+          </button>
+        )}
+      </div>
+
+      {checkout.status === 'COMPLETED' && (
+        <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg text-center">
+          Checkout completed
+        </div>
+      )}
+
+      {checkout.status === 'CANCELLED' && (
+        <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-center">
+          Checkout cancelled
+        </div>
+      )}
+    </div>
+  );
+}

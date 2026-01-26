@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Settings {
+  id           Int      @id @default(1)
+  adminPinHash String?
+  timezone     String   @default("UTC")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Person {
+  id        String   @id @default(uuid())
+  name      String
+  timers    Timer[]
+  createdAt DateTime @default(now())
+}
+
+model Timer {
+  id                    String            @id @default(uuid())
+  name                  String
+  person                Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId              String
+  defaultDailySeconds   Int // Default allocation in seconds
+  defaultStartTime      String? // Default start time for all days (HH:MM format in 24hr)
+  defaultExpirationTime String? // Default expiration time for all days (HH:MM format in 24hr)
+  schedules             TimerSchedule[]
+  allocations           DailyAllocation[]
+  checkouts             Checkout[]
+  createdAt             DateTime          @default(now())
+}
+
+model TimerSchedule {
+  id             String   @id @default(uuid())
+  timer          Timer    @relation(fields: [timerId], references: [id], onDelete: Cascade)
+  timerId        String
+  dayOfWeek      Int // 0=Sunday, 1=Monday, ..., 6=Saturday
+  seconds        Int // Allocation for this day
+  startTime      String? // Time of day when timer becomes available (HH:MM format in 24hr, e.g., "06:00")
+  expirationTime String? // Time of day when timer expires (HH:MM format in 24hr, e.g., "20:00")
+  createdAt      DateTime @default(now())
+
+  @@unique([timerId, dayOfWeek])
+}
+
+model DailyAllocation {
+  id           String     @id @default(uuid())
+  timer        Timer      @relation(fields: [timerId], references: [id], onDelete: Cascade)
+  timerId      String
+  date         DateTime // Date for this allocation (stored as start of day)
+  totalSeconds Int // Total seconds allocated for this day
+  usedSeconds  Int        @default(0) // Seconds used so far
+  checkouts    Checkout[]
+  createdAt    DateTime   @default(now())
+
+  @@unique([timerId, date])
+}
+
+model Checkout {
+  id               String          @id @default(uuid())
+  timer            Timer           @relation(fields: [timerId], references: [id], onDelete: Cascade)
+  timerId          String
+  allocation       DailyAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  allocationId     String
+  allocatedSeconds Int // Seconds checked out
+  usedSeconds      Int             @default(0) // Seconds actually used
+  status           String          @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, CANCELLED
+  entries          TimeEntry[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model TimeEntry {
+  id              String    @id @default(uuid())
+  checkout        Checkout  @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  checkoutId      String
+  startTime       DateTime
+  endTime         DateTime?
+  durationSeconds Int       @default(0)
+  createdAt       DateTime  @default(now())
+}

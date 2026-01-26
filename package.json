@@ -1,0 +1,31 @@
+{
+  "name": "timer-app",
+  "version": "1.0.0",
+  "description": "Daily Timer PWA with checkout functionality",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:all": "npm run build:frontend && npm run build:backend",
+    "copy:frontend": "cp -r frontend/dist/* backend/public/ || xcopy /E /I /Y frontend\\dist backend\\public",
+    "build:deploy": "npm run build:frontend && npm run copy:frontend && npm run build:backend",
+    "test:backend": "cd backend && npm test",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:all": "npm run test:backend && npm run test:e2e"
+  },
+  "keywords": [
+    "timer",
+    "pwa",
+    "time-management"
+  ],
+  "author": "",
+  "license": "MIT",
+  "main": "index.js",
+  "devDependencies": {
+    "@playwright/test": "^1.58.0"
+  }
+}
