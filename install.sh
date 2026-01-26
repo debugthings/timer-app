@@ -92,9 +92,11 @@ cp -r node_modules /opt/timer-app/
 cp -r prisma /opt/timer-app/
 cp package*.json /opt/timer-app/
 
-# Copy deploy script
+# Copy update scripts
 cp ../deploy.sh /opt/timer-app/
+cp ../update.sh /opt/timer-app/
 chmod +x /opt/timer-app/deploy.sh
+chmod +x /opt/timer-app/update.sh
 
 # Create production .env file
 cat > /opt/timer-app/.env << 'ENVEOF'
@@ -128,8 +130,6 @@ After=network.target
 Type=simple
 User=timer-app
 WorkingDirectory=/opt/timer-app
-# Pull latest code, build, and deploy before starting
-ExecStartPre=/opt/timer-app/deploy.sh
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10

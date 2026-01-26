@@ -4,24 +4,39 @@
 # This script pulls the latest code, builds, and deploys to /opt/timer-app
 #
 
-set -e  # Exit on error
-
 REPO_URL="https://github.com/debugthings/timer-app.git"
 BUILD_DIR="/tmp/timer-app-build"
 DEPLOY_DIR="/opt/timer-app"
 BRANCH="master"
-
-echo "========================================"
-echo "Timer App Deployment"
-echo "========================================"
-echo ""
+AUTO_UPDATE_FLAG="/opt/timer-app/.auto-update-enabled"
 
 # Function to log messages
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+# Check if auto-update is enabled
+if [ ! -f "$AUTO_UPDATE_FLAG" ]; then
+    log "Auto-update is disabled. Skipping deployment."
+    log "To enable: touch $AUTO_UPDATE_FLAG"
+    exit 0
+fi
+
+# Check if this looks like a fresh install (no dist directory yet)
+if [ ! -d "$DEPLOY_DIR/dist" ]; then
+    log "Fresh installation detected, skipping auto-update on first start"
+    exit 0
+fi
+
+echo "========================================"
+echo "Timer App Deployment"
+echo "========================================"
+echo ""
+
 log "Starting deployment process..."
+
+# Set error handling - continue on errors, but log them
+set +e
 
 # Clean up old build directory if it exists
 if [ -d "$BUILD_DIR" ]; then
@@ -31,7 +46,10 @@ fi
 
 # Clone the repository
 log "Cloning repository from $REPO_URL..."
-git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$BUILD_DIR"
+if ! git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$BUILD_DIR"; then
+    log "ERROR: Failed to clone repository"
+    exit 1
+fi
 cd "$BUILD_DIR"
 
 log "Repository cloned successfully"
@@ -39,15 +57,27 @@ log "Repository cloned successfully"
 # Build Frontend
 log "Building frontend..."
 cd frontend
-npm install --production=false
-npm run build
+if ! npm install --omit=dev 2>&1; then
+    log "ERROR: Frontend npm install failed"
+    exit 1
+fi
+if ! npm run build 2>&1; then
+    log "ERROR: Frontend build failed"
+    exit 1
+fi
 log "Frontend built successfully"
 
 # Build Backend
 log "Building backend..."
 cd ../backend
-npm install --production=false
-npm run build
+if ! npm install --omit=dev 2>&1; then
+    log "ERROR: Backend npm install failed"
+    exit 1
+fi
+if ! npm run build 2>&1; then
+    log "ERROR: Backend build failed"
+    exit 1
+fi
 log "Backend built successfully"
 
 # Copy built frontend to backend public folder
@@ -90,8 +120,12 @@ fi
 log "Running database migrations..."
 cd "$DEPLOY_DIR"
 export DATABASE_URL="file:/opt/timer-app/data/timer.db"
-npx prisma generate
-npx prisma migrate deploy
+if ! npx prisma generate 2>&1; then
+    log "WARNING: Prisma generate failed"
+fi
+if ! npx prisma migrate deploy 2>&1; then
+    log "WARNING: Prisma migrate failed"
+fi
 
 # Set permissions
 log "Setting permissions..."

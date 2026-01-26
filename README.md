@@ -207,6 +207,7 @@ The script will:
 - Build the frontend and backend
 - Set up the database
 - Create a system user and directories
+- Install update scripts (`deploy.sh` and `update.sh`)
 - Install and start the systemd service
 
 #### Step 3: Access the Application
@@ -297,13 +298,16 @@ npx prisma migrate deploy
 chown -R timer-app:timer-app /opt/timer-app
 ```
 
-#### 5. Copy Deployment Script
+#### 5. Copy Update Scripts
 
 ```bash
-# Copy the auto-deploy script
+# Copy the deployment and update scripts
 cp /tmp/timer-app/deploy.sh /opt/timer-app/
+cp /tmp/timer-app/update.sh /opt/timer-app/
 chmod +x /opt/timer-app/deploy.sh
+chmod +x /opt/timer-app/update.sh
 chown root:root /opt/timer-app/deploy.sh
+chown root:root /opt/timer-app/update.sh
 ```
 
 #### 6. Create Systemd Service
@@ -319,8 +323,6 @@ After=network.target
 Type=simple
 User=timer-app
 WorkingDirectory=/opt/timer-app
-# Pull latest code, build, and deploy before starting
-ExecStartPre=/opt/timer-app/deploy.sh
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10
@@ -342,8 +344,6 @@ systemctl start timer-app
 # Check status
 systemctl status timer-app
 ```
-
-**Note:** The service includes `ExecStartPre=/opt/timer-app/deploy.sh` which automatically pulls the latest code and builds it every time the service starts. Remove this line if you want to manage deployments manually.
 
 #### 7. Verify Installation
 
@@ -385,56 +385,50 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Automatic Updates
+### Update to Latest Version
 
-The systemd service is configured to **automatically pull, build, and deploy** the latest code from GitHub every time it starts.
-
-**To update to the latest version:**
+**Simple update command:**
 
 ```bash
-# Simply restart the service - it will automatically update
-sudo systemctl restart timer-app
-
-# Check logs to see the deployment process
-sudo journalctl -u timer-app -f
+# Run the update script
+sudo /opt/timer-app/update.sh
 ```
 
-The deployment process:
-1. ✅ Clones latest code from GitHub
-2. ✅ Builds frontend and backend
-3. ✅ Backs up current deployment
-4. ✅ Deploys new files
-5. ✅ Runs database migrations
-6. ✅ Starts the service
+The update script will:
+1. ✅ Stop the service
+2. ✅ Backup the database (timestamped)
+3. ✅ Clone latest code from GitHub
+4. ✅ Build frontend and backend
+5. ✅ Deploy new files
+6. ✅ Run database migrations
+7. ✅ Restart the service
 
-**Manual deployment** (if needed):
+**Manual update** (alternative method):
 
 ```bash
-# Run the deployment script manually
-sudo /opt/timer-app/deploy.sh
+# Stop service and backup
+sudo systemctl stop timer-app
+sudo cp /opt/timer-app/data/timer.db /opt/timer-app/data/timer.db.backup.$(date +%Y%m%d)
 
-# Then start the service
+# Run deployment
+sudo touch /opt/timer-app/.auto-update-enabled  # Enable deployment
+sudo /opt/timer-app/deploy.sh
+sudo rm /opt/timer-app/.auto-update-enabled     # Disable again
+
+# Restart service
 sudo systemctl start timer-app
 ```
 
-**Disable auto-update** (optional):
-
-If you want to disable automatic updates and manage deployments manually:
+**View update logs:**
 
 ```bash
-# Edit the service file
-sudo nano /etc/systemd/system/timer-app.service
-
-# Remove or comment out this line:
-# ExecStartPre=/opt/timer-app/deploy.sh
-
-# Reload systemd
-sudo systemctl daemon-reload
+# Watch service logs during/after update
+sudo journalctl -u timer-app -f
 ```
 
 ### Database Backups
 
-Before updating, the system automatically backs up deployments. For database backups:
+The update script automatically backs up your database. For manual backups:
 
 ```bash
 # Manual backup

@@ -6,8 +6,6 @@ After=network.target
 Type=simple
 User=timer-app
 WorkingDirectory=/opt/timer-app
-# Pull latest code, build, and deploy before starting
-ExecStartPre=/opt/timer-app/deploy.sh
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10
