@@ -78,9 +78,13 @@ export async function forceStopExpiredCheckouts(timerId: string): Promise<void> 
         if (checkout.entries.length > 0) {
           const activeEntry = checkout.entries[0];
           const now = new Date();
-          const durationSeconds = Math.floor(
+          const actualDurationSeconds = Math.floor(
             (now.getTime() - activeEntry.startTime.getTime()) / 1000
           );
+
+          // Cap duration at remaining allocated time to prevent overrun
+          const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+          const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
 
           await tx.timeEntry.update({
             where: { id: activeEntry.id },
@@ -93,6 +97,9 @@ export async function forceStopExpiredCheckouts(timerId: string): Promise<void> 
           totalUsedSeconds += durationSeconds;
           additionalSeconds = durationSeconds;
         }
+
+        // Cap total used seconds at allocated amount
+        totalUsedSeconds = Math.min(totalUsedSeconds, checkout.allocatedSeconds);
 
         // Update allocation with used time
         if (additionalSeconds > 0) {

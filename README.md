@@ -280,13 +280,21 @@ cp -r /tmp/timer-app/backend/node_modules /opt/timer-app/
 cp -r /tmp/timer-app/backend/prisma /opt/timer-app/
 cp /tmp/timer-app/backend/package*.json /opt/timer-app/
 
-# Set permissions
-chown -R timer-app:timer-app /opt/timer-app
+# Create production .env file
+cat > /opt/timer-app/.env << 'ENVEOF'
+DATABASE_URL="file:/opt/timer-app/data/timer.db"
+PORT=3001
+NODE_ENV=production
+ENVEOF
 
-# Setup database
+# Setup database (before setting permissions)
 cd /opt/timer-app
+export DATABASE_URL="file:/opt/timer-app/data/timer.db"
 npx prisma generate
 npx prisma migrate deploy
+
+# Set permissions AFTER database is created
+chown -R timer-app:timer-app /opt/timer-app
 ```
 
 #### 5. Create Systemd Service
@@ -399,6 +407,7 @@ cp -r ../frontend/dist/* /opt/timer-app/public/
 
 # Run database migrations
 cd /opt/timer-app
+export DATABASE_URL="file:/opt/timer-app/data/timer.db"
 npx prisma generate
 npx prisma migrate deploy
 

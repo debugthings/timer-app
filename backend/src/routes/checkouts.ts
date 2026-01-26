@@ -257,9 +257,13 @@ router.post('/:id/pause', async (req, res) => {
 
       const activeEntry = checkout.entries[0];
       const now = new Date();
-      const durationSeconds = Math.floor(
+      const actualDurationSeconds = Math.floor(
         (now.getTime() - activeEntry.startTime.getTime()) / 1000
       );
+
+      // Cap duration at remaining allocated time to prevent overrun
+      const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+      const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
 
       // End the time entry
       await tx.timeEntry.update({
@@ -280,11 +284,16 @@ router.post('/:id/pause', async (req, res) => {
         },
       });
 
-      // Update checkout used seconds
+      // Update checkout used seconds (cap at allocated amount)
+      const newUsedSeconds = Math.min(
+        checkout.usedSeconds + durationSeconds,
+        checkout.allocatedSeconds
+      );
+
       return tx.checkout.update({
         where: { id },
         data: {
-          usedSeconds: checkout.usedSeconds + durationSeconds,
+          usedSeconds: newUsedSeconds,
           status: 'PAUSED',
         },
         include: {
@@ -340,9 +349,13 @@ router.post('/:id/stop', async (req, res) => {
       if (checkout.entries.length > 0) {
         const activeEntry = checkout.entries[0];
         const now = new Date();
-        const durationSeconds = Math.floor(
+        const actualDurationSeconds = Math.floor(
           (now.getTime() - activeEntry.startTime.getTime()) / 1000
         );
+
+        // Cap duration at remaining allocated time to prevent overrun
+        const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+        const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
 
         await tx.timeEntry.update({
           where: { id: activeEntry.id },
@@ -355,6 +368,9 @@ router.post('/:id/stop', async (req, res) => {
         totalUsedSeconds += durationSeconds;
         additionalSeconds = durationSeconds;
       }
+
+      // Cap total used seconds at allocated amount
+      totalUsedSeconds = Math.min(totalUsedSeconds, checkout.allocatedSeconds);
 
       // Update allocation used seconds with any additional usage from the final active entry
       if (additionalSeconds > 0) {
@@ -428,9 +444,13 @@ router.post('/:id/cancel', async (req, res) => {
       if (checkout.entries.length > 0) {
         const activeEntry = checkout.entries[0];
         const now = new Date();
-        const durationSeconds = Math.floor(
+        const actualDurationSeconds = Math.floor(
           (now.getTime() - activeEntry.startTime.getTime()) / 1000
         );
+
+        // Cap duration at remaining allocated time to prevent overrun
+        const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+        const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
 
         await tx.timeEntry.update({
           where: { id: activeEntry.id },
