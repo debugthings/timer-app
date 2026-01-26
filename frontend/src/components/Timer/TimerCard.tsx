@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Timer } from '../../types';
+import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { createCheckout, startCheckout, pauseCheckout } from '../../services/api';
-import { showNotification, playCompletionSound } from '../../utils/notifications';
+import { createCheckout, startCheckout, pauseCheckout, updateTimer } from '../../services/api';
+import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 
 interface TimerCardProps {
@@ -15,6 +15,8 @@ export function TimerCard({ timer }: TimerCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [showAlarmSelector, setShowAlarmSelector] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
   const allocation = timer.todayAllocation;
   const hasNotifiedRef = useRef(false);
@@ -70,6 +72,13 @@ export function TimerCard({ timer }: TimerCardProps) {
     }
   }, [activeCheckout?.id]);
   
+  // Cleanup alarm on unmount
+  useEffect(() => {
+    return () => {
+      stopContinuousAlarm();
+    };
+  }, []);
+  
   useEffect(() => {
     if (isRunning && hasActiveEntry && activeCheckout) {
       const activeEntry = activeCheckout.entries?.find((e) => !e.endTime);
@@ -85,10 +94,11 @@ export function TimerCard({ timer }: TimerCardProps) {
         if (totalCheckoutElapsed >= activeCheckout.allocatedSeconds) {
           setLiveCheckoutUsed(activeCheckout.allocatedSeconds);
           
-          // Show notification and play sound (only once)
+          // Show notification, alarm, and modal (only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            playCompletionSound();
+            startContinuousAlarm(timer.alarmSound);
+            setShowAlarmModal(true);
             showNotification(`${timer.name} - Timer Complete!`, {
               body: `Checkout time has ended for ${timer.person?.name || 'timer'}.`,
               requireInteraction: true,
@@ -192,12 +202,32 @@ export function TimerCard({ timer }: TimerCardProps) {
   const handleCardClick = () => {
     navigate(`/timer/${timer.id}`);
   };
+  
+  const handleAcknowledgeAlarm = () => {
+    stopContinuousAlarm();
+    setShowAlarmModal(false);
+  };
+  
+  const handleAlarmSoundChange = async (newSound: AlarmSound) => {
+    try {
+      await updateTimer(timer.id, { alarmSound: newSound });
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      setShowAlarmSelector(false);
+      
+      // Play preview of the new sound
+      startContinuousAlarm(newSound);
+      setTimeout(() => stopContinuousAlarm(), 1500);
+    } catch (error) {
+      console.error('Failed to update alarm sound:', error);
+    }
+  };
 
   return (
-    <div 
-      onClick={handleCardClick}
-      className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer"
-    >
+    <>
+      <div 
+        onClick={handleCardClick}
+        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer"
+      >
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h3 className="text-xl font-bold">{timer.name}</h3>
@@ -206,6 +236,38 @@ export function TimerCard({ timer }: TimerCardProps) {
               <p className="text-blue-600 text-xs mt-1">
                 Schedule: {scheduleSummary}
               </p>
+            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAlarmSelector(!showAlarmSelector);
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 mt-1 flex items-center gap-1"
+            >
+              🔔 {ALARM_SOUND_LABELS[timer.alarmSound]}
+            </button>
+            {showAlarmSelector && (
+              <div 
+                className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-2 space-y-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {(Object.keys(ALARM_SOUND_LABELS) as AlarmSound[]).map((sound) => (
+                  <button
+                    key={sound}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAlarmSoundChange(sound);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
+                      timer.alarmSound === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
+                    }`}
+                  >
+                    {ALARM_SOUND_LABELS[sound]}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
           {!isAvailable ? (
@@ -321,5 +383,40 @@ export function TimerCard({ timer }: TimerCardProps) {
           </div>
         )}
       </div>
+      
+      {/* Alarm Acknowledgment Modal */}
+      {showAlarmModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent card click
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
+            <div className="text-center">
+              <div className="text-6xl mb-4">⏰</div>
+              <h2 className="text-3xl font-bold text-red-600 mb-4">
+                Time's Up!
+              </h2>
+              <p className="text-lg text-gray-700 mb-2 font-semibold">
+                {timer.name}
+              </p>
+              <p className="text-md text-gray-600 mb-6">
+                Checkout time has ended for {timer.person?.name || 'timer'}.
+              </p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAcknowledgeAlarm();
+                }}
+                className="w-full px-6 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Acknowledge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

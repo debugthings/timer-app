@@ -33,6 +33,7 @@ model Timer {
   defaultDailySeconds   Int // Default allocation in seconds
   defaultStartTime      String? // Default start time for all days (HH:MM format in 24hr)
   defaultExpirationTime String? // Default expiration time for all days (HH:MM format in 24hr)
+  alarmSound            String            @default("classic") // Alarm sound type: classic, urgent, chime, bell, buzz
   schedules             TimerSchedule[]
   allocations           DailyAllocation[]
   checkouts             Checkout[]

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Checkout } from '../../types';
 import { formatTime } from '../../utils/time';
 import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
-import { showNotification, startContinuousAlarm, stopContinuousAlarm } from '../../utils/notifications';
+import { showNotification, startContinuousAlarm, stopContinuousAlarm, AlarmSound } from '../../utils/notifications';
 import { useTimerExpiration } from '../../hooks/useTimerExpiration';
 
 interface ActiveTimerProps {
@@ -78,7 +78,8 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           // Show notification, alarm, and modal (only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            startContinuousAlarm();
+            const alarmSound = (checkout.timer?.alarmSound as AlarmSound) || 'classic';
+            startContinuousAlarm(alarmSound);
             setShowAlarmModal(true);
             showNotification('Timer Complete!', {
               body: 'Your checkout time has ended.',
@@ -104,7 +105,8 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   useEffect(() => {
     if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
       // Timer expired, show notification and alarm
-      startContinuousAlarm();
+      const alarmSound = (checkout.timer?.alarmSound as AlarmSound) || 'classic';
+      startContinuousAlarm(alarmSound);
       setShowAlarmModal(true);
       showNotification('Timer Expired', {
         body: 'This timer has expired for today and has been stopped.',
@@ -112,7 +114,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       });
       onUpdate(); // Refresh to show cancelled status
     }
-  }, [isExpired, checkout.status, checkout.id, onUpdate]);
+  }, [isExpired, checkout.status, checkout.id, checkout.timer?.alarmSound, onUpdate]);
 
   const handleAcknowledgeAlarm = () => {
     stopContinuousAlarm();

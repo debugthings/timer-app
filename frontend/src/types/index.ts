@@ -20,6 +20,8 @@ export interface TimerSchedule {
   createdAt: string;
 }
 
+export type AlarmSound = 'classic' | 'urgent' | 'chime' | 'bell' | 'buzz';
+
 export interface Timer {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ export interface Timer {
   defaultDailySeconds: number;
   defaultStartTime?: string; // HH:MM format (24hr) - applies to all days unless schedule overrides
   defaultExpirationTime?: string; // HH:MM format (24hr) - applies to all days unless schedule overrides
+  alarmSound: AlarmSound; // Alarm sound type
   schedules?: TimerSchedule[];
   todayAllocation?: DailyAllocation;
   createdAt: string;
@@ -78,6 +81,7 @@ export interface CreateTimerRequest {
   defaultDailySeconds: number;
   defaultStartTime?: string;
   defaultExpirationTime?: string;
+  alarmSound?: AlarmSound;
   schedules?: Array<{ dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }>;
 }
 
@@ -87,6 +91,7 @@ export interface UpdateTimerRequest {
   defaultDailySeconds?: number;
   defaultStartTime?: string;
   defaultExpirationTime?: string;
+  alarmSound?: AlarmSound;
   schedules?: Array<{ dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }>;
 }
 

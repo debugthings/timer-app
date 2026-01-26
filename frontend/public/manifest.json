@@ -2,12 +2,14 @@
   "name": "Daily Timer App",
   "short_name": "Timer App",
   "description": "Manage daily time allocations with checkout functionality",
-  "theme_color": "#ffffff",
+  "theme_color": "#3b82f6",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/",
+  "categories": ["productivity", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/pwa-192x192.png",

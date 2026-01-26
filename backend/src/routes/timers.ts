@@ -241,7 +241,7 @@ router.get('/:id/allocation', async (req, res) => {
 
 // Create timer (admin only)
 router.post('/', requireAdminPin, async (req, res) => {
-  const { name, personId, defaultDailySeconds, defaultStartTime, defaultExpirationTime, schedules } = req.body;
+  const { name, personId, defaultDailySeconds, defaultStartTime, defaultExpirationTime, alarmSound, schedules } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
@@ -263,6 +263,7 @@ router.post('/', requireAdminPin, async (req, res) => {
         defaultDailySeconds,
         defaultStartTime: defaultStartTime || null,
         defaultExpirationTime: defaultExpirationTime || null,
+        alarmSound: alarmSound || 'classic',
         schedules: schedules ? {
           create: schedules.map((s: { dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }) => ({
             dayOfWeek: s.dayOfWeek,
@@ -292,7 +293,7 @@ router.post('/', requireAdminPin, async (req, res) => {
 // Update timer (admin only)
 router.put('/:id', requireAdminPin, async (req, res) => {
   const { id } = req.params;
-  const { name, personId, defaultDailySeconds, defaultStartTime, defaultExpirationTime, schedules } = req.body;
+  const { name, personId, defaultDailySeconds, defaultStartTime, defaultExpirationTime, alarmSound, schedules } = req.body;
 
   const updateData: {
     name?: string;
@@ -300,6 +301,7 @@ router.put('/:id', requireAdminPin, async (req, res) => {
     defaultDailySeconds?: number;
     defaultStartTime?: string | null;
     defaultExpirationTime?: string | null;
+    alarmSound?: string;
   } = {};
 
   if (name !== undefined) {
@@ -326,6 +328,10 @@ router.put('/:id', requireAdminPin, async (req, res) => {
 
   if (defaultExpirationTime !== undefined) {
     updateData.defaultExpirationTime = defaultExpirationTime || null;
+  }
+
+  if (alarmSound !== undefined) {
+    updateData.alarmSound = alarmSound;
   }
 
   try {
