@@ -14,6 +14,22 @@ A self-hosted PWA for managing daily time allocations with checkout functionalit
 - **Offline Capable**: Works offline with service worker caching
 - **Self-Hosted**: Run on your own Debian/Proxmox LXC container
 
+## Quick Start (Proxmox Deployment)
+
+Deploy to a Proxmox LXC container in 2 steps:
+
+```bash
+# 1. Create Debian LXC container (on Proxmox host)
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/debian.sh)"
+
+# 2. Install Timer App (inside container - use 'pct enter CONTAINER_ID')
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/debugthings/timer-app/master/install.sh)"
+```
+
+Access at `http://YOUR_CONTAINER_IP:3001`
+
+[Full deployment instructions →](#deployment-to-proxmox-lxc-container)
+
 ## Architecture
 
 - **Frontend**: React 18, TypeScript, TailwindCSS, Vite, React Query
@@ -158,70 +174,171 @@ npm start
 
 The app will be available at `http://localhost:3001`.
 
-## Deployment to Debian LXC (Proxmox)
+## Deployment to Proxmox LXC Container
 
-### 1. Prepare LXC Container
+### Quick Deploy (Automated)
+
+#### Step 1: Create Debian LXC Container
+
+From your Proxmox host:
 
 ```bash
-# Create user
-sudo useradd -r -s /bin/false timer-app
+# Create a Debian 12 LXC container using community scripts
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/debian.sh)"
 
-# Create directories
-sudo mkdir -p /opt/timer-app/data
-sudo chown -R timer-app:timer-app /opt/timer-app
+# Note the container ID (e.g., 100)
 ```
 
-### 2. Install Node.js
+#### Step 2: Run Installation Script
+
+Enter the container and run the automated installation:
 
 ```bash
+# Enter the container (replace 100 with your container ID)
+pct enter 100
+
+# Download and run the installation script
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/debugthings/timer-app/master/install.sh)"
+```
+
+The script will:
+- Install Node.js 20 LTS and build tools
+- Clone the repository from GitHub
+- Build the frontend and backend
+- Set up the database
+- Create a system user and directories
+- Install and start the systemd service
+
+#### Step 3: Access the Application
+
+The app will be available at `http://YOUR_CONTAINER_IP:3001`
+
+### Manual Installation (Step-by-Step)
+
+If you prefer manual installation or need to customize the setup:
+
+#### 1. Create and Enter Container
+
+```bash
+# On Proxmox host
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/debian.sh)"
+
+# Enter the container (replace 100 with your container ID)
+pct enter 100
+```
+
+#### 2. Install Dependencies
+
+```bash
+# Update system
+apt update && apt upgrade -y
+
+# Install build tools and git
+apt install -y build-essential git curl sqlite3
+
 # Install Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
 ```
 
-### 3. Copy Application Files
-
-Build the application locally (frontend + backend), then copy to the server:
+#### 3. Clone and Build Application
 
 ```bash
-# From your local machine
-scp -r backend user@your-lxc-ip:/tmp/timer-app-backend
+# Clone repository
+git clone https://github.com/debugthings/timer-app.git /tmp/timer-app
+cd /tmp/timer-app
+
+# Install and build frontend
+cd frontend
+npm install
+npm run build
+
+# Install and build backend
+cd ../backend
+npm install
+npm run build
+
+# Copy built frontend to backend public folder
+mkdir -p public
+cp -r ../frontend/dist/* public/
 ```
 
-On the server:
+#### 4. Setup Application Directory
 
 ```bash
-# Move to final location
-sudo mv /tmp/timer-app-backend/* /opt/timer-app/
-sudo chown -R timer-app:timer-app /opt/timer-app
+# Create system user
+useradd -r -s /bin/false timer-app
 
-# Install production dependencies
-cd /opt/timer-app
-npm ci --production
+# Create application directory
+mkdir -p /opt/timer-app
+mkdir -p /opt/timer-app/data
+
+# Copy built backend
+cp -r /tmp/timer-app/backend/dist /opt/timer-app/
+cp -r /tmp/timer-app/backend/public /opt/timer-app/
+cp -r /tmp/timer-app/backend/node_modules /opt/timer-app/
+cp -r /tmp/timer-app/backend/prisma /opt/timer-app/
+cp /tmp/timer-app/backend/package*.json /opt/timer-app/
+
+# Set permissions
+chown -R timer-app:timer-app /opt/timer-app
 
 # Setup database
+cd /opt/timer-app
 npx prisma generate
 npx prisma migrate deploy
 ```
 
-### 4. Setup Systemd Service
+#### 5. Create Systemd Service
 
 ```bash
-# Copy service file
-sudo cp timer-app.service /etc/systemd/system/
+# Create service file
+cat > /etc/systemd/system/timer-app.service << 'EOF'
+[Unit]
+Description=Timer App
+After=network.target
+
+[Service]
+Type=simple
+User=timer-app
+WorkingDirectory=/opt/timer-app
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=DATABASE_URL=file:/opt/timer-app/data/timer.db
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
 # Reload systemd
-sudo systemctl daemon-reload
+systemctl daemon-reload
 
 # Enable and start service
-sudo systemctl enable timer-app
-sudo systemctl start timer-app
+systemctl enable timer-app
+systemctl start timer-app
 
 # Check status
-sudo systemctl status timer-app
+systemctl status timer-app
 ```
 
-### 5. Configure NGINX Proxy
+#### 6. Verify Installation
+
+```bash
+# Check if service is running
+systemctl status timer-app
+
+# Check logs
+journalctl -u timer-app -f
+
+# Test API
+curl http://localhost:3001/api/admin/settings
+```
+
+### Configure NGINX Reverse Proxy (Optional)
+
+If you want to access the app through a domain name or NGINX proxy:
 
 Add this location block to your NGINX configuration:
 
@@ -244,6 +361,52 @@ Reload NGINX:
 ```bash
 sudo nginx -t
 sudo systemctl reload nginx
+```
+
+### Update Deployed Application
+
+To update an existing installation:
+
+```bash
+# Stop the service
+systemctl stop timer-app
+
+# Backup database
+cp /opt/timer-app/data/timer.db /opt/timer-app/data/timer.db.backup
+
+# Clone latest version
+cd /tmp
+rm -rf timer-app
+git clone https://github.com/debugthings/timer-app.git
+cd timer-app
+
+# Build frontend
+cd frontend
+npm install
+npm run build
+
+# Build backend
+cd ../backend
+npm install
+npm run build
+
+# Update application files
+rm -rf /opt/timer-app/dist
+rm -rf /opt/timer-app/public
+cp -r dist /opt/timer-app/
+cp -r public /opt/timer-app/ || mkdir -p /opt/timer-app/public
+cp -r ../frontend/dist/* /opt/timer-app/public/
+
+# Run database migrations
+cd /opt/timer-app
+npx prisma generate
+npx prisma migrate deploy
+
+# Restart service
+systemctl start timer-app
+
+# Check status
+systemctl status timer-app
 ```
 
 ## Usage
