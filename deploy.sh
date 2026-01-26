@@ -57,7 +57,7 @@ log "Repository cloned successfully"
 # Build Frontend
 log "Building frontend..."
 cd frontend
-if ! npm install --omit=dev 2>&1; then
+if ! npm install 2>&1; then
     log "ERROR: Frontend npm install failed"
     exit 1
 fi
@@ -70,7 +70,7 @@ log "Frontend built successfully"
 # Build Backend
 log "Building backend..."
 cd ../backend
-if ! npm install --omit=dev 2>&1; then
+if ! npm install 2>&1; then
     log "ERROR: Backend npm install failed"
     exit 1
 fi
