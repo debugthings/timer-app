@@ -268,9 +268,9 @@ export function TimerDetail() {
         )}
 
         {/* Alarm Audit Logs */}
-        {alarmLogs.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Alarm Activity</h3>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Alarm Activity</h3>
+          {alarmLogs.length > 0 ? (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {alarmLogs.map((log: any) => (
                 <div
@@ -292,8 +292,14 @@ export function TimerDetail() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <div className="text-4xl mb-2">📊</div>
+              <p>No alarm activity yet</p>
+              <p className="text-sm">Alarm events will appear here when timers complete or expire</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
