@@ -8,7 +8,7 @@ import { FirstTimeSetup } from './pages/FirstTimeSetup';
 import { Dashboard } from './pages/Dashboard';
 import { TimerDetail } from './pages/TimerDetail';
 import { AdminPanel } from './pages/AdminPanel';
-import { requestNotificationPermission } from './utils/notifications';
+import { NotificationPrompt } from './components/NotificationPrompt';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,10 +31,9 @@ function AppContent() {
     });
   }, []);
 
-  // Request notification permission on app load
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+  // Don't auto-request notification permission on load
+  // iOS/PWA requires user interaction first
+  // Users will be prompted when they need notifications (timer start, etc.)
 
   const handlePinSubmit = async (pin: string) => {
     const result = await verifyPin({ pin });
@@ -85,6 +84,8 @@ function AppContent() {
           }
         />
       </Routes>
+
+      <NotificationPrompt />
 
       <PinModal
         isOpen={showPinModal}

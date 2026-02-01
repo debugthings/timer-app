@@ -17,40 +17,67 @@ iOS requires the app to be installed as a PWA to enable notifications. Follow th
    - Scroll down and tap "Add to Home Screen"
    - Tap "Add" to confirm
 3. **Open the app from your home screen**
-4. **Grant notification permissions** when prompted
+4. **Enable notifications** when prompted (appears after a few seconds)
+   - Click "Enable" to grant notification permissions
+   - This prompt appears automatically with user interaction
 
 **iOS Limitations:**
 - Notifications ONLY work when the app is added to home screen
 - Must use Safari to install (Chrome/Firefox won't work)
 - Requires iOS 16.4 or later for full push notification support
 - Notifications appear as system notifications with sound and vibration
+- Permission request requires user interaction (button click, not auto-request)
 
 ### Desktop/Android Support
 
 **Desktop** (Chrome, Edge, Firefox):
 - Click the install button in the address bar
 - Or use browser menu → "Install Timer App"
+- A notification prompt will appear after 3 seconds - click "Enable"
 - Notifications work immediately after granting permission
 
 **Android** (Chrome, Samsung Internet):
 - Tap "Add to Home Screen" prompt
 - Or use browser menu → "Add to Home Screen"
+- A notification prompt will appear - click "Enable" to grant permission
 - Notifications work with full system integration
 
 ### Features
 
 ✅ **Offline Mode**: View timers and data when offline  
 ✅ **Install Prompt**: Add to home screen for native app experience  
-✅ **Push Notifications**: Get alerts when timers complete or expire  
+✅ **Push Notifications**: Get alerts when timers complete or expire (with user interaction prompt)  
 ✅ **Background Sync**: Updates sync when connection returns  
 ✅ **App Icons**: Custom icons for home screen  
+✅ **Smart Permission Prompt**: Notification prompt appears automatically after 3 seconds (requires user click)  
 
 ---
 
 ## Alarm Sound System
 
 ### Overview
-Each timer can have its own alarm sound, customizable by anyone without admin approval.
+Each timer can have its own alarm sound. **All users can preview alarm sounds without authentication** - just click on the alarm icon (🔔) on any timer card to hear different alarm options.
+
+### Public Alarm Sound API
+
+A public, unauthenticated endpoint is available for listing alarm sounds:
+
+```
+GET /api/sounds/alarm-sounds
+```
+
+Returns:
+```json
+[
+  { "id": "classic", "label": "🔔 Classic", "description": "Two-tone classic alarm" },
+  { "id": "urgent", "label": "⚠️ Urgent", "description": "Fast, high-pitched repeating alarm" },
+  { "id": "chime", "label": "🎵 Chime", "description": "Pleasant chime sound" },
+  { "id": "bell", "label": "🔔 Bell", "description": "Church bell-like sound" },
+  { "id": "buzz", "label": "📳 Buzz", "description": "Vibration-like buzz" }
+]
+```
+
+**Note:** Changing the saved alarm sound for a timer requires admin authentication. However, previewing sounds is available to everyone.
 
 ### Available Alarm Sounds
 

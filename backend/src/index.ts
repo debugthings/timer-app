@@ -6,6 +6,7 @@ import adminRoutes from './routes/admin';
 import peopleRoutes from './routes/people';
 import timerRoutes from './routes/timers';
 import checkoutRoutes from './routes/checkouts';
+import soundsRoutes from './routes/sounds';
 
 export const app = express();
 const port = process.env.PORT || 3001;
@@ -30,6 +31,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/people', peopleRoutes);
 app.use('/api/timers', timerRoutes);
 app.use('/api/checkouts', checkoutRoutes);
+app.use('/api/sounds', soundsRoutes); // Public endpoint for alarm sounds
 
 // Serve static files from the public directory (frontend build)
 app.use(express.static(path.join(__dirname, '../public')));

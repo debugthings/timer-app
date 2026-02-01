@@ -208,17 +208,30 @@ export function TimerCard({ timer }: TimerCardProps) {
     setShowAlarmModal(false);
   };
   
+  const handleAlarmSoundPreview = (sound: AlarmSound) => {
+    // Just play the sound as a preview (no auth needed)
+    startContinuousAlarm(sound);
+    setTimeout(() => stopContinuousAlarm(), 1500);
+  };
+  
   const handleAlarmSoundChange = async (newSound: AlarmSound) => {
+    // Try to save, but if it fails (no auth), just show a message
     try {
       await updateTimer(timer.id, { alarmSound: newSound });
       queryClient.invalidateQueries({ queryKey: ['timers'] });
       setShowAlarmSelector(false);
       
-      // Play preview of the new sound
-      startContinuousAlarm(newSound);
-      setTimeout(() => stopContinuousAlarm(), 1500);
-    } catch (error) {
-      console.error('Failed to update alarm sound:', error);
+      // Play preview of the saved sound
+      handleAlarmSoundPreview(newSound);
+    } catch (error: any) {
+      // If unauthorized, just preview the sound
+      if (error?.response?.status === 401) {
+        console.log('Not authorized to save alarm sound, playing preview only');
+        handleAlarmSoundPreview(newSound);
+        // Don't close the selector, let user keep testing
+      } else {
+        console.error('Failed to update alarm sound:', error);
+      }
     }
   };
 
@@ -249,24 +262,33 @@ export function TimerCard({ timer }: TimerCardProps) {
             </button>
             {showAlarmSelector && (
               <div 
-                className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-2 space-y-1"
+                className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
                 onClick={(e) => e.stopPropagation()}
               >
+                <div className="text-xs text-gray-500 font-semibold mb-2">
+                  Click to preview alarm sound:
+                </div>
                 {(Object.keys(ALARM_SOUND_LABELS) as AlarmSound[]).map((sound) => (
-                  <button
-                    key={sound}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleAlarmSoundChange(sound);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                      timer.alarmSound === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
-                    }`}
-                  >
-                    {ALARM_SOUND_LABELS[sound]}
-                  </button>
+                  <div key={sound} className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAlarmSoundPreview(sound);
+                      }}
+                      className="flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                      title="Click to preview"
+                    >
+                      {ALARM_SOUND_LABELS[sound]}
+                      {timer.alarmSound === sound && (
+                        <span className="ml-2 text-blue-600">✓</span>
+                      )}
+                    </button>
+                  </div>
                 ))}
+                <div className="text-xs text-gray-400 mt-2 pt-2 border-t">
+                  💡 Alarm sounds play when timer completes
+                </div>
               </div>
             )}
           </div>
