@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
+import { GlobalAlarmProvider } from './hooks/useGlobalAlarm';
 import { getSettings, verifyPin } from './services/api';
 import { PinModal } from './components/Admin/PinModal';
 import { FirstTimeSetup } from './pages/FirstTimeSetup';
@@ -132,9 +133,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AdminProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <GlobalAlarmProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </GlobalAlarmProvider>
       </AdminProvider>
     </QueryClientProvider>
   );

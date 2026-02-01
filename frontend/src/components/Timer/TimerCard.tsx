@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createCheckout, startCheckout, pauseCheckout, updateTimerAlarmSound } from '../../services/api';
 import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
+import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
 interface TimerCardProps {
   timer: Timer;
@@ -15,13 +16,13 @@ export function TimerCard({ timer }: TimerCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
-  const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [showAlarmSelector, setShowAlarmSelector] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
   const allocation = timer.todayAllocation;
   const hasNotifiedRef = useRef(false);
   const availability = useTimerAvailability(timer.id);
   const isAvailable = availability.available;
+  const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
   
   const activeCheckout = allocation?.checkouts?.find(
     (c) => c.status === 'ACTIVE' || c.status === 'PAUSED'
@@ -97,8 +98,7 @@ export function TimerCard({ timer }: TimerCardProps) {
           // Show notification, alarm, and modal (only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            startContinuousAlarm(timer.alarmSound);
-            setShowAlarmModal(true);
+            triggerAlarm(timer.name, timer.person?.name, 'completed', timer.alarmSound);
             showNotification(`${timer.name} - Timer Complete!`, {
               body: `Checkout time has ended for ${timer.person?.name || 'timer'}.`,
               requireInteraction: true,
@@ -204,8 +204,7 @@ export function TimerCard({ timer }: TimerCardProps) {
   };
   
   const handleAcknowledgeAlarm = () => {
-    stopContinuousAlarm();
-    setShowAlarmModal(false);
+    acknowledgeAlarm();
   };
   
   const handleAlarmSoundPreview = (sound: AlarmSound) => {
@@ -406,7 +405,7 @@ export function TimerCard({ timer }: TimerCardProps) {
       </div>
       
       {/* Alarm Acknowledgment Modal */}
-      {showAlarmModal && (
+      {alarmState?.isActive && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
@@ -417,13 +416,16 @@ export function TimerCard({ timer }: TimerCardProps) {
             <div className="text-center">
               <div className="text-6xl mb-4">⏰</div>
               <h2 className="text-3xl font-bold text-red-600 mb-4">
-                Time's Up!
+                {alarmState?.reason === 'completed' ? "Time's Up!" : 'Timer Expired'}
               </h2>
               <p className="text-lg text-gray-700 mb-2 font-semibold">
-                {timer.name}
+                {alarmState?.timerName}
               </p>
               <p className="text-md text-gray-600 mb-6">
-                Checkout time has ended for {timer.person?.name || 'timer'}.
+                {alarmState?.reason === 'completed'
+                  ? `Checkout time has ended for ${alarmState?.personName || 'timer'}.`
+                  : `This timer has expired for today and has been stopped.`
+                }
               </p>
               <button
                 onClick={(e) => {

@@ -60,53 +60,13 @@ export async function showNotification(title: string, options?: NotificationOpti
   }
 }
 
-// Play a completion sound
-export function playCompletionSound(): void {
+// Play a completion sound (single beep for notifications)
+export async function playCompletionSound(): Promise<void> {
   try {
-    // Create audio context
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    // Create oscillator for beep sound
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Configure sound - pleasant notification beep
-    oscillator.frequency.value = 800; // Hz
-    oscillator.type = 'sine';
-    
-    // Fade in and out for smoother sound
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
-    
-    // Play for 0.5 seconds
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
-    
-    // Play a second beep
-    setTimeout(() => {
-      const oscillator2 = audioContext.createOscillator();
-      const gainNode2 = audioContext.createGain();
-      
-      oscillator2.connect(gainNode2);
-      gainNode2.connect(audioContext.destination);
-      
-      oscillator2.frequency.value = 1000; // Slightly higher pitch
-      oscillator2.type = 'sine';
-      
-      gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-      gainNode2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
-      
-      oscillator2.start(audioContext.currentTime);
-      oscillator2.stop(audioContext.currentTime + 0.5);
-    }, 200);
-    
+    // Use a short, pleasant sound for completion notifications
+    await playAlarmSound('/media/alarms/Neon.ogg');
   } catch (error) {
-    console.error('Failed to play sound:', error);
+    console.error('Failed to play completion sound:', error);
   }
 }
 
@@ -114,157 +74,75 @@ export function playCompletionSound(): void {
 export type AlarmSound = 'classic' | 'urgent' | 'chime' | 'bell' | 'buzz';
 
 export const ALARM_SOUND_LABELS: Record<AlarmSound, string> = {
-  classic: '🔔 Classic',
-  urgent: '⚠️ Urgent',
-  chime: '🎵 Chime',
-  bell: '🔔 Bell',
-  buzz: '📳 Buzz',
+  classic: 'Helium',
+  urgent: 'FireDrill',
+  chime: 'Cesium',
+  bell: 'Osmium',
+  buzz: 'Plutonium',
 };
+
+// Map alarm types to OGG files
+const ALARM_SOUND_FILES: Record<AlarmSound, string> = {
+  classic: '/media/alarms/Helium.ogg',     // Clear, classic alarm
+  urgent: '/media/alarms/FireDrill.ogg',  // Urgent, attention-grabbing
+  chime: '/media/alarms/Cesium.ogg',      // Pleasant, melodic
+  bell: '/media/alarms/Osmium.ogg',       // Bell-like, resonant
+  buzz: '/media/alarms/Plutonium.ogg',    // Buzzing, vibrating
+};
+
+// Audio cache for loaded sounds
+const audioCache: Map<string, HTMLAudioElement> = new Map();
 
 // Continuous alarm system
 let alarmInterval: number | null = null;
-let alarmAudioContext: AudioContext | null = null;
+let currentAlarmAudio: HTMLAudioElement | null = null;
 let currentAlarmType: AlarmSound = 'classic';
 
-// Alarm sound generators
-const alarmSoundGenerators: Record<AlarmSound, (ctx: AudioContext) => void> = {
-  classic: (ctx: AudioContext) => {
-    // Two-tone classic alarm
-    const playTone = (freq: number, delay: number) => {
-      setTimeout(() => {
-        if (!ctx) return;
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.frequency.value = freq;
-        oscillator.type = 'square';
-        
-        gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
-        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.3);
-      }, delay);
-    };
-    
-    playTone(880, 0);    // A5
-    playTone(1108, 350); // C#6
-  },
-  
-  urgent: (ctx: AudioContext) => {
-    // Fast, high-pitched repeating alarm
-    const playBeep = (delay: number) => {
-      setTimeout(() => {
-        if (!ctx) return;
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.frequency.value = 1400;
-        oscillator.type = 'sawtooth';
-        
-        gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);
-        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.15);
-      }, delay);
-    };
-    
-    playBeep(0);
-    playBeep(200);
-    playBeep(400);
-  },
-  
-  chime: (ctx: AudioContext) => {
-    // Pleasant chime sound
-    const playNote = (freq: number, delay: number, duration: number) => {
-      setTimeout(() => {
-        if (!ctx) return;
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.frequency.value = freq;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + duration);
-      }, delay);
-    };
-    
-    // Pleasant chord progression
-    playNote(523, 0, 0.8);    // C5
-    playNote(659, 100, 0.8);  // E5
-    playNote(784, 200, 1.0);  // G5
-  },
-  
-  bell: (ctx: AudioContext) => {
-    // Church bell-like sound
-    const playBell = () => {
-      if (!ctx) return;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      oscillator.frequency.value = 440; // A4
-      oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
-      
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 1.2);
-    };
-    
-    playBell();
-  },
-  
-  buzz: (ctx: AudioContext) => {
-    // Vibration-like buzz
-    const playBuzz = (delay: number) => {
-      setTimeout(() => {
-        if (!ctx) return;
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.frequency.value = 200;
-        oscillator.type = 'sawtooth';
-        
-        gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.01);
-        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.3);
-      }, delay);
-    };
-    
-    playBuzz(0);
-    playBuzz(100);
-    playBuzz(200);
-    playBuzz(300);
-  },
-};
+function loadAudio(src: string): Promise<HTMLAudioElement> {
+  return new Promise((resolve, reject) => {
+    if (audioCache.has(src)) {
+      resolve(audioCache.get(src)!);
+      return;
+    }
+
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.volume = 0.7; // Set reasonable volume
+
+    audio.addEventListener('canplaythrough', () => {
+      audioCache.set(src, audio);
+      resolve(audio);
+    });
+
+    audio.addEventListener('error', () => {
+      reject(new Error(`Failed to load audio: ${src}`));
+    });
+
+    audio.src = src;
+  });
+}
+
+async function playAlarmSound(soundFile: string): Promise<void> {
+  try {
+    const audio = await loadAudio(soundFile);
+
+    // Clone the audio for simultaneous playback
+    const audioClone = audio.cloneNode() as HTMLAudioElement;
+    audioClone.volume = 0.7;
+    audioClone.currentTime = 0;
+
+    // Play the sound
+    await audioClone.play();
+
+    // Clean up after playing
+    audioClone.addEventListener('ended', () => {
+      // Audio cleanup happens automatically
+    });
+
+  } catch (error) {
+    console.error('Failed to play alarm sound:', error);
+  }
+}
 
 export function startContinuousAlarm(alarmType: AlarmSound = 'classic'): void {
   if (alarmInterval) {
@@ -272,35 +150,30 @@ export function startContinuousAlarm(alarmType: AlarmSound = 'classic'): void {
   }
 
   currentAlarmType = alarmType;
+  const soundFile = ALARM_SOUND_FILES[alarmType];
 
-  try {
-    alarmAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    const playAlarmBeep = () => {
-      if (!alarmAudioContext) return;
-      const generator = alarmSoundGenerators[currentAlarmType];
-      if (generator) {
-        generator(alarmAudioContext);
-      }
-    };
-    
-    // Play immediately
-    playAlarmBeep();
-    
-    // Then repeat based on alarm type
-    const intervals: Record<AlarmSound, number> = {
-      classic: 1500,
-      urgent: 800,
-      chime: 2000,
-      bell: 2500,
-      buzz: 1200,
-    };
-    
-    alarmInterval = window.setInterval(playAlarmBeep, intervals[currentAlarmType]);
-    
-  } catch (error) {
-    console.error('Failed to start alarm:', error);
+  if (!soundFile) {
+    console.error(`No sound file found for alarm type: ${alarmType}`);
+    return;
   }
+
+  const playAlarmBeep = () => {
+    playAlarmSound(soundFile);
+  };
+
+  // Play immediately
+  playAlarmBeep();
+
+  // Then repeat based on alarm type
+  const intervals: Record<AlarmSound, number> = {
+    classic: 2000,  // 2 seconds - matches Helium.ogg length
+    urgent: 1500,   // 1.5 seconds - matches FireDrill.ogg pattern
+    chime: 2500,    // 2.5 seconds - matches Cesium.ogg length
+    bell: 3000,     // 3 seconds - matches Osmium.ogg length
+    buzz: 1800,     // 1.8 seconds - matches Plutonium.ogg pattern
+  };
+
+  alarmInterval = window.setInterval(playAlarmBeep, intervals[currentAlarmType]);
 }
 
 export function stopContinuousAlarm(): void {
@@ -308,9 +181,10 @@ export function stopContinuousAlarm(): void {
     clearInterval(alarmInterval);
     alarmInterval = null;
   }
-  
-  if (alarmAudioContext) {
-    alarmAudioContext.close();
-    alarmAudioContext = null;
+
+  if (currentAlarmAudio) {
+    currentAlarmAudio.pause();
+    currentAlarmAudio.currentTime = 0;
+    currentAlarmAudio = null;
   }
 }

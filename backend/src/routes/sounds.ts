@@ -6,11 +6,11 @@ const router = express.Router();
 router.get('/alarm-sounds', async (req, res) => {
   try {
     const alarmSounds = [
-      { id: 'classic', label: '🔔 Classic', description: 'Two-tone classic alarm' },
-      { id: 'urgent', label: '⚠️ Urgent', description: 'Fast, high-pitched repeating alarm' },
-      { id: 'chime', label: '🎵 Chime', description: 'Pleasant chime sound' },
-      { id: 'bell', label: '🔔 Bell', description: 'Church bell-like sound' },
-      { id: 'buzz', label: '📳 Buzz', description: 'Vibration-like buzz' },
+      { id: 'classic', label: 'Helium', description: 'Clear, classic alarm tone' },
+      { id: 'urgent', label: 'FireDrill', description: 'High-priority emergency alert' },
+      { id: 'chime', label: 'Cesium', description: 'Pleasant, melodic notification' },
+      { id: 'bell', label: 'Osmium', description: 'Deep, resonant bell tone' },
+      { id: 'buzz', label: 'Plutonium', description: 'Vibration-like buzz pattern' },
     ];
 
     res.json(alarmSounds);

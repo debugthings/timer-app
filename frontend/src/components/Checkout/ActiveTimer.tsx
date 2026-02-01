@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Checkout } from '../../types';
 import { formatTime } from '../../utils/time';
 import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
-import { showNotification, startContinuousAlarm, stopContinuousAlarm, AlarmSound } from '../../utils/notifications';
+import { showNotification, AlarmSound } from '../../utils/notifications';
 import { useTimerExpiration } from '../../hooks/useTimerExpiration';
+import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
 interface ActiveTimerProps {
   checkout: Checkout;
@@ -14,11 +15,11 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(checkout.usedSeconds);
   const [isRunning, setIsRunning] = useState(checkout.status === 'ACTIVE');
   const [loading, setLoading] = useState(false);
-  const [showAlarmModal, setShowAlarmModal] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
   const hasNotifiedRef = useRef(false);
   const autoPausingRef = useRef(false); // Prevent multiple auto-pause attempts
   const isExpired = useTimerExpiration(checkout.timerId);
+  const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
 
   const remainingSeconds = checkout.allocatedSeconds - elapsedSeconds;
   const hasActiveEntry = checkout.entries?.some((e) => !e.endTime);
@@ -33,12 +34,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
     autoPausingRef.current = false;
   }, [checkout.id, checkout.usedSeconds, checkout.status]);
 
-  // Cleanup alarm on unmount
-  useEffect(() => {
-    return () => {
-      stopContinuousAlarm();
-    };
-  }, []);
+  // Cleanup alarm on unmount is handled by GlobalAlarmProvider
 
   const handlePause = useCallback(async () => {
     // Prevent double-clicks and concurrent operations
@@ -74,20 +70,9 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
         if (totalElapsed >= checkout.allocatedSeconds) {
           // Auto-stop when time runs out
           setElapsedSeconds(checkout.allocatedSeconds);
-          
-          // Show notification, alarm, and modal (only once)
-          if (!hasNotifiedRef.current) {
-            hasNotifiedRef.current = true;
-            const alarmSound = (checkout.timer?.alarmSound as AlarmSound) || 'classic';
-            startContinuousAlarm(alarmSound);
-            setShowAlarmModal(true);
-            showNotification('Timer Complete!', {
-              body: 'Your checkout time has ended.',
-              requireInteraction: true,
-            });
-          }
-          
+
           // Auto-pause (only once, prevent race condition)
+          // Alarm notifications are handled by TimerCard on dashboard
           if (!autoPausingRef.current) {
             autoPausingRef.current = true;
             handlePause();
@@ -106,19 +91,17 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
     if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
       // Timer expired, show notification and alarm
       const alarmSound = (checkout.timer?.alarmSound as AlarmSound) || 'classic';
-      startContinuousAlarm(alarmSound);
-      setShowAlarmModal(true);
+      triggerAlarm(checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'expired', alarmSound);
       showNotification('Timer Expired', {
         body: 'This timer has expired for today and has been stopped.',
         requireInteraction: true,
       });
       onUpdate(); // Refresh to show cancelled status
     }
-  }, [isExpired, checkout.status, checkout.id, checkout.timer?.alarmSound, onUpdate]);
+  }, [isExpired, checkout.status, checkout.id, checkout.timer?.alarmSound, checkout.timer?.name, checkout.timer?.person?.name, triggerAlarm, onUpdate]);
 
   const handleAcknowledgeAlarm = () => {
-    stopContinuousAlarm();
-    setShowAlarmModal(false);
+    acknowledgeAlarm();
   };
 
   const handleStart = async () => {
@@ -228,18 +211,21 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       )}
 
       {/* Alarm Acknowledgment Modal */}
-      {showAlarmModal && (
+      {alarmState?.isActive && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
             <div className="text-center">
               <div className="text-6xl mb-4">⏰</div>
               <h2 className="text-3xl font-bold text-red-600 mb-4">
-                {isExpired ? 'Timer Expired!' : 'Time\'s Up!'}
+                {alarmState?.reason === 'expired' ? 'Timer Expired!' : 'Time\'s Up!'}
               </h2>
-              <p className="text-lg text-gray-700 mb-6">
-                {isExpired 
-                  ? 'This timer has expired for today.'
-                  : 'Your checkout time has ended.'}
+              <p className="text-lg text-gray-700 mb-2 font-semibold">
+                {alarmState?.timerName}
+              </p>
+              <p className="text-md text-gray-600 mb-6">
+                {alarmState?.reason === 'expired'
+                  ? `This timer has expired for today and has been stopped.`
+                  : `Checkout time has ended for ${alarmState?.personName || 'timer'}.`}
               </p>
               <button
                 onClick={handleAcknowledgeAlarm}

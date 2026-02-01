@@ -28,6 +28,43 @@ iOS requires the app to be installed as a PWA to enable notifications. Follow th
 - Notifications appear as system notifications with sound and vibration
 - Permission request requires user interaction (button click, not auto-request)
 
+#### ⚠️ **Critical iOS Background Limitation**
+
+**When the Timer App is NOT open on iOS, notifications will NOT work.** This is a fundamental iOS PWA limitation:
+
+- **❌ No background timers** - JavaScript stops when app closes
+- **❌ No background notifications** - PWAs cannot send notifications when closed
+- **❌ No background alarms** - Continuous sounds cannot play when app is closed
+
+**Current Behavior:**
+- ✅ Notifications work when app is **open in foreground**
+- ✅ Notifications work when app is **minimized** (recently used)
+- ❌ **Notifications FAIL when app is completely closed**
+
+**Workaround:** Keep the Timer App open or minimized when expecting timer completions.
+
+#### **Future Solutions (Native App)**
+
+For reliable background notifications on iOS, a native iOS app would be needed with:
+
+- **Push Notification Service** - Apple's APNs for background delivery
+- **Background Processing** - iOS background execution capabilities
+- **Silent Notifications** - Wake app in background to check timers
+- **Local Notifications** - Schedule notifications that work when app is closed
+
+**Consider:** If background notifications are critical, consider building a native iOS app using React Native or Swift.
+
+#### **Alternative: Server-Side Notifications**
+
+Another approach could be server-side timer monitoring with push notifications, but this requires:
+
+- **Web Push API** - Browser-based push notifications (limited iOS support)
+- **Server Monitoring** - Backend service to track timer completion
+- **Push Service** - Integration with push notification services
+- **User Opt-in** - Users subscribe to push notifications
+
+**Note:** Web Push API has limited support on iOS and requires HTTPS.
+
 ### Desktop/Android Support
 
 **Desktop** (Chrome, Edge, Firefox):
@@ -56,7 +93,7 @@ iOS requires the app to be installed as a PWA to enable notifications. Follow th
 ## Alarm Sound System
 
 ### Overview
-Each timer can have its own alarm sound. **All users can preview and save alarm sounds without authentication** - just click on the alarm icon (🔔) on any timer card to hear different alarm options. Double-click to save your selection.
+Each timer can have its own alarm sound. **All users can preview and save alarm sounds without authentication** - just click on the alarm icon on any timer card to hear different alarm options. Double-click to save your selection.
 
 ### Public Alarm Sound API
 
@@ -69,11 +106,11 @@ GET /api/sounds/alarm-sounds
 Returns:
 ```json
 [
-  { "id": "classic", "label": "🔔 Classic", "description": "Two-tone classic alarm" },
-  { "id": "urgent", "label": "⚠️ Urgent", "description": "Fast, high-pitched repeating alarm" },
-  { "id": "chime", "label": "🎵 Chime", "description": "Pleasant chime sound" },
-  { "id": "bell", "label": "🔔 Bell", "description": "Church bell-like sound" },
-  { "id": "buzz", "label": "📳 Buzz", "description": "Vibration-like buzz" }
+  { "id": "classic", "label": "Helium", "description": "Clear, classic alarm tone" },
+  { "id": "urgent", "label": "FireDrill", "description": "High-priority emergency alert" },
+  { "id": "chime", "label": "Cesium", "description": "Pleasant, melodic notification" },
+  { "id": "bell", "label": "Osmium", "description": "Deep, resonant bell tone" },
+  { "id": "buzz", "label": "Plutonium", "description": "Vibration-like buzz pattern" }
 ]
 ```
 
@@ -81,30 +118,18 @@ Returns:
 
 ### Available Alarm Sounds
 
-1. **🔔 Classic** - Traditional two-tone alarm (default)
-   - Moderate urgency, pleasant tones
-   - Repeats every 1.5 seconds
+All alarm sounds use high-quality OGG audio files for authentic, professional sound quality:
 
-2. **⚠️ Urgent** - Fast, high-pitched repeating beeps
-   - Maximum attention-grabbing
-   - Repeats every 0.8 seconds
-
-3. **🎵 Chime** - Pleasant melodic chime
-   - Gentle, musical tones
-   - Repeats every 2 seconds
-
-4. **🔔 Bell** - Church bell-like sound
-   - Deep, resonant tone
-   - Repeats every 2.5 seconds
-
-5. **📳 Buzz** - Vibration-like buzz pattern
-   - Multiple short bursts
-   - Repeats every 1.2 seconds
+1. **Helium** - Clear, classic alarm tone (moderate urgency, pleasant)
+2. **FireDrill** - High-priority emergency alert (maximum attention-grabbing)
+3. **Cesium** - Pleasant, melodic notification (gentle and musical)
+4. **Osmium** - Deep, resonant bell tone (traditional alarm sound)
+5. **Plutonium** - Vibration-like buzz pattern (modern alert sound)
 
 ### How to Change Alarm Sound
 
 **From Timer Card (Dashboard):**
-1. Click the alarm icon (🔔) below the timer name
+1. Click the alarm icon below the timer name
 2. Select your preferred sound from the dropdown
 3. Sound plays a preview automatically
 4. No admin approval required!
@@ -132,10 +157,11 @@ When you select a new alarm, it plays once so you can hear it before committing.
 
 ### Technical Details
 
-- **Audio Generation**: Web Audio API (no external files needed)
+- **Audio Files**: High-quality OGG files (23 professional recordings)
+- **Caching**: Audio files cached after first load for instant playback
 - **Customization**: Per-timer settings stored in database
 - **User Control**: No admin approval required for sound changes
-- **Performance**: Lightweight, browser-native sound generation
+- **Performance**: Optimized loading and playback
 
 ---
 
@@ -220,7 +246,7 @@ PUT /api/timers/:id
 *iOS requires Add to Home Screen for full functionality
 
 ### Audio Support
-All modern browsers support Web Audio API for alarm sounds.
+All modern browsers support OGG audio playback for high-quality alarm sounds.
 
 ---
 
