@@ -3,7 +3,7 @@ import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { createCheckout, startCheckout, pauseCheckout, updateTimer, updateTimerAlarmSound } from '../../services/api';
+import { createCheckout, startCheckout, pauseCheckout, updateTimerAlarmSound } from '../../services/api';
 import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 
