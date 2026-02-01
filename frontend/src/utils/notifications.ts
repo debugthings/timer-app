@@ -154,6 +154,9 @@ let alarmInterval: number | null = null;
 let currentAlarmAudio: HTMLAudioElement | null = null;
 let currentAlarmType: AlarmSound = 'helium';
 
+// Currently playing preview audio (for dropdown previews)
+let currentPreviewAudio: HTMLAudioElement | null = null;
+
 function loadAudio(src: string): Promise<HTMLAudioElement> {
   return new Promise((resolve, reject) => {
     if (audioCache.has(src)) {
@@ -178,22 +181,47 @@ function loadAudio(src: string): Promise<HTMLAudioElement> {
   });
 }
 
-async function playAlarmSound(soundFile: string): Promise<void> {
+async function playAlarmSound(soundFile: string, isPreview: boolean = false): Promise<void> {
   try {
+    // Stop any currently playing preview before starting new one
+    if (isPreview && currentPreviewAudio) {
+      currentPreviewAudio.pause();
+      currentPreviewAudio.currentTime = 0;
+      currentPreviewAudio = null;
+    }
+
     const audio = await loadAudio(soundFile);
 
-    // Clone the audio for simultaneous playback
+    // Clone the audio for playback
     const audioClone = audio.cloneNode() as HTMLAudioElement;
     audioClone.volume = 0.7;
     audioClone.currentTime = 0;
+
+    // Track the audio if it's a preview
+    if (isPreview) {
+      currentPreviewAudio = audioClone;
+    }
 
     // Play the sound
     await audioClone.play();
 
     // Clean up after playing
     audioClone.addEventListener('ended', () => {
-      // Audio cleanup happens automatically
+      if (isPreview && currentPreviewAudio === audioClone) {
+        currentPreviewAudio = null;
+      }
     });
+
+    // For previews, stop after 1.5 seconds
+    if (isPreview) {
+      setTimeout(() => {
+        if (currentPreviewAudio === audioClone) {
+          audioClone.pause();
+          audioClone.currentTime = 0;
+          currentPreviewAudio = null;
+        }
+      }, 1500);
+    }
 
   } catch (error) {
     console.error('Failed to play alarm sound:', error);
@@ -214,7 +242,7 @@ export function startContinuousAlarm(alarmType: AlarmSound = 'helium'): void {
   }
 
   const playAlarmBeep = () => {
-    playAlarmSound(soundFile);
+    playAlarmSound(soundFile, false); // false = continuous alarm, not preview
   };
 
   // Play immediately
@@ -249,6 +277,13 @@ export function startContinuousAlarm(alarmType: AlarmSound = 'helium'): void {
   alarmInterval = window.setInterval(playAlarmBeep, intervals[currentAlarmType]);
 }
 
+export async function playAlarmPreview(sound: AlarmSound): Promise<void> {
+  const soundFile = ALARM_SOUND_FILES[sound];
+  if (soundFile) {
+    await playAlarmSound(soundFile, true); // true = preview mode
+  }
+}
+
 export function stopContinuousAlarm(): void {
   if (alarmInterval) {
     clearInterval(alarmInterval);
@@ -259,5 +294,12 @@ export function stopContinuousAlarm(): void {
     currentAlarmAudio.pause();
     currentAlarmAudio.currentTime = 0;
     currentAlarmAudio = null;
+  }
+
+  // Also stop any playing preview
+  if (currentPreviewAudio) {
+    currentPreviewAudio.pause();
+    currentPreviewAudio.currentTime = 0;
+    currentPreviewAudio = null;
   }
 }

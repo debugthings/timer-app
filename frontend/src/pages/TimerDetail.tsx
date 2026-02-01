@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimer, createCheckout, startCheckout, stopCheckout } from '../services/api';
+import { getTimer, createCheckout, startCheckout, stopCheckout, getAlarmLogs } from '../services/api';
 import { ActiveTimer } from '../components/Checkout/ActiveTimer';
 import { formatTime } from '../utils/time';
 import { useTimerAvailability } from '../hooks/useTimerExpiration';
@@ -18,6 +18,12 @@ export function TimerDetail() {
     queryKey: ['timer', id],
     queryFn: () => getTimer(id!),
     refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
+  });
+
+  const { data: alarmLogs = [] } = useQuery({
+    queryKey: ['alarmLogs', id],
+    queryFn: () => getAlarmLogs(id!, 20), // Get last 20 alarm events
+    refetchInterval: 10000, // Refetch every 10 seconds to show new logs
   });
 
   const createCheckoutMutation = useMutation({
@@ -257,6 +263,34 @@ export function TimerDetail() {
                     </span>
                   </div>
                 ))}
+            </div>
+          </div>
+        )}
+
+        {/* Alarm Audit Logs */}
+        {alarmLogs.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Alarm Activity</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {alarmLogs.map((log: any) => (
+                <div
+                  key={log.id}
+                  className="flex justify-between items-center p-3 bg-gray-50 rounded text-sm"
+                >
+                  <div className="flex-1">
+                    <span className="font-medium capitalize">{log.action}</span>
+                    {log.soundType && (
+                      <span className="ml-2 text-gray-600">({log.soundType})</span>
+                    )}
+                    {log.details && (
+                      <div className="text-xs text-gray-500 mt-1">{log.details}</div>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

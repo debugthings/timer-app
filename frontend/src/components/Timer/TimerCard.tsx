@@ -3,8 +3,8 @@ import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { createCheckout, startCheckout, pauseCheckout, updateTimerAlarmSound } from '../../services/api';
-import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound } from '../../utils/notifications';
+import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAlarmLog } from '../../services/api';
+import { showNotification, stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
@@ -76,12 +76,14 @@ export function TimerCard({ timer }: TimerCardProps) {
     }
   }, [isRunning, hasActiveEntry, activeCheckout, allocation?.usedSeconds]);
 
+  // Daily remaining should show time available for new sessions (ignoring current active checkout)
   const dailyRemainingSeconds = allocation
-    ? allocation.totalSeconds - liveUsedSeconds
+    ? allocation.totalSeconds - allocation.usedSeconds
     : timer.defaultDailySeconds;
 
+  // Daily progress should always be based on the total daily allocation used (not current session)
   const progressPercent = allocation
-    ? (liveUsedSeconds / allocation.totalSeconds) * 100
+    ? (allocation.usedSeconds / allocation.totalSeconds) * 100
     : 0;
 
   // Calculate checkout-specific elapsed and remaining
@@ -119,7 +121,7 @@ export function TimerCard({ timer }: TimerCardProps) {
           // Show notification, alarm, and modal (only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            triggerAlarm(timer.name, timer.person?.name, 'completed', timer.alarmSound);
+            triggerAlarm(timer.id, timer.name, timer.person?.name, 'completed', timer.alarmSound);
             showNotification(`${timer.name} - Timer Complete!`, {
               body: `Checkout time has ended for ${timer.person?.name || 'timer'}.`,
               requireInteraction: true,
@@ -139,9 +141,18 @@ export function TimerCard({ timer }: TimerCardProps) {
   // Handle click outside and focus loss for dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowAlarmSelector(false);
-      }
+      // Small delay to ensure button click handlers run first
+      setTimeout(() => {
+        const target = event.target as Element;
+        // Don't close if clicking on dropdown content or the dropdown button
+        if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+          // Check if we're not clicking on the dropdown trigger button
+          const dropdownButton = dropdownRef.current.parentElement?.querySelector('button[aria-haspopup]');
+          if (!dropdownButton?.contains(target)) {
+            setShowAlarmSelector(false);
+          }
+        }
+      }, 1);
     };
 
     const handleFocusOut = (event: FocusEvent) => {
@@ -154,12 +165,12 @@ export function TimerCard({ timer }: TimerCardProps) {
     };
 
     if (showAlarmSelector) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
       dropdownRef.current?.addEventListener('focusout', handleFocusOut);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
       dropdownRef.current?.removeEventListener('focusout', handleFocusOut);
     };
   }, [showAlarmSelector]);
@@ -209,11 +220,10 @@ export function TimerCard({ timer }: TimerCardProps) {
     
     try {
       if (!activeCheckout) {
-        // Quick checkout 30 minutes if no active checkout
-        const checkoutSeconds = Math.min(dailyRemainingSeconds, 30 * 60);
+        // Create checkout for ALL remaining time (like TimerDetail)
         const result = await createCheckout({
           timerId: timer.id,
-          allocatedSeconds: checkoutSeconds,
+          allocatedSeconds: remainingSeconds,
         });
         await startCheckout(result.id);
       } else {
@@ -231,12 +241,12 @@ export function TimerCard({ timer }: TimerCardProps) {
   const handlePause = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Prevent double-clicks using ref
     if (operationInProgress.current || loading || !activeCheckout) return;
     operationInProgress.current = true;
     setLoading(true);
-    
+
     try {
       await pauseCheckout(activeCheckout.id);
       queryClient.invalidateQueries({ queryKey: ['timers'] });
@@ -248,18 +258,54 @@ export function TimerCard({ timer }: TimerCardProps) {
     }
   };
 
-  const handleCardClick = () => {
-    navigate(`/timer/${timer.id}`);
+  const handleStop = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Prevent double-clicks using ref
+    if (operationInProgress.current || loading || !activeCheckout) return;
+    operationInProgress.current = true;
+    setLoading(true);
+
+    try {
+      await stopCheckout(activeCheckout.id);
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    } catch (error) {
+      console.error('Failed to stop timer:', error);
+    } finally {
+      setLoading(false);
+      operationInProgress.current = false;
+    }
   };
-  
-  const handleAcknowledgeAlarm = () => {
+
+  const handleAcknowledgeAlarm = async () => {
     acknowledgeAlarm();
+
+    // Log the alarm acknowledgment
+    try {
+      await createAlarmLog(timer.id, {
+        action: 'acknowledged',
+        details: 'User acknowledged alarm',
+      });
+    } catch (error) {
+      console.error('Failed to log alarm acknowledgment:', error);
+    }
   };
   
-  const handleAlarmSoundPreview = (sound: AlarmSound) => {
-    // Just play the sound as a preview (no auth needed)
-    startContinuousAlarm(sound);
-    setTimeout(() => stopContinuousAlarm(), 1500);
+  const handleAlarmSoundPreview = async (sound: AlarmSound) => {
+    // Play the alarm preview (automatically handles stopping previous previews)
+    await playAlarmPreview(sound);
+
+    // Log the alarm preview action
+    try {
+      await createAlarmLog(timer.id, {
+        action: 'preview',
+        soundType: sound,
+        details: 'User previewed alarm sound',
+      });
+    } catch (error) {
+      console.error('Failed to log alarm preview:', error);
+    }
   };
   
   const handleAlarmSoundChange = async (newSound: AlarmSound) => {
@@ -280,12 +326,18 @@ export function TimerCard({ timer }: TimerCardProps) {
     operationInProgress.current = true;
 
     try {
-      await createCheckoutMutation.mutateAsync({
+      // Create checkout and immediately start it
+      const checkoutResult = await createCheckoutMutation.mutateAsync({
         timerId: timer.id,
         allocatedSeconds: minutes * 60,
       });
+
+      // Immediately start the checkout
+      await startCheckout(checkoutResult.id);
+
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
     } catch (error) {
-      console.error('Failed to create quick checkout:', error);
+      console.error('Failed to create/start quick checkout:', error);
     } finally {
       operationInProgress.current = false;
     }
@@ -293,10 +345,7 @@ export function TimerCard({ timer }: TimerCardProps) {
 
   return (
     <>
-      <div 
-        onClick={handleCardClick}
-        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer"
-      >
+      <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h3 className="text-xl font-bold">{timer.name}</h3>
@@ -336,11 +385,13 @@ export function TimerCard({ timer }: TimerCardProps) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          e.nativeEvent?.stopImmediatePropagation?.();
                           handleAlarmSoundPreview(sound);
                         }}
                         onDoubleClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          e.nativeEvent?.stopImmediatePropagation?.();
                           handleAlarmSoundChange(sound);
                         }}
                         className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
@@ -407,7 +458,7 @@ export function TimerCard({ timer }: TimerCardProps) {
               </span>
             ) : (
               <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-                Expired
+                Expired Today
               </span>
             )
           ) : hasActiveCheckout ? (
@@ -416,6 +467,20 @@ export function TimerCard({ timer }: TimerCardProps) {
             </span>
           ) : null}
         </div>
+
+        {/* Detailed availability message */}
+        {!isAvailable && (
+          <div className="text-xs text-center mb-2 px-2 py-1 rounded bg-gray-50">
+            {availability.reason === 'before_start'
+              ? 'Timer will become available at its start time today'
+              : 'Timer has reached its expiration time for today and will reset tomorrow'}
+            {(timer.defaultStartTime || timer.defaultExpirationTime) && (
+              <div className="text-xs text-gray-500 mt-1">
+                Window: {timer.defaultStartTime || '00:00'} - {timer.defaultExpirationTime || '23:59'}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mb-3 space-y-2">
           {/* Daily progress bar */}
@@ -479,54 +544,70 @@ export function TimerCard({ timer }: TimerCardProps) {
         {/* Action buttons */}
         {isAvailable && dailyRemainingSeconds > 0 && (
           <div className="space-y-3">
-            {/* Main action buttons */}
-            <div className="flex gap-2">
-              {!hasActiveCheckout && (
-                <button
-                  onClick={handleStart}
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
-                >
-                  {loading ? 'Starting...' : 'Start Full Session'}
-                </button>
-              )}
+            {/* Action buttons row */}
+            <div className="flex gap-2 items-center">
+              {/* Main action buttons */}
+              <div className="flex gap-2 flex-1">
+                {!hasActiveCheckout && (
+                  <button
+                    onClick={handleStart}
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
+                  >
+                    {loading ? 'Starting...' : 'Start'}
+                  </button>
+                )}
 
-              {hasActiveCheckout && !hasActiveEntry && (
-                <button
-                  onClick={handleStart}
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
-                >
-                  {loading ? 'Starting...' : 'Resume'}
-                </button>
-              )}
+                {hasActiveCheckout && !hasActiveEntry && (
+                  <button
+                    onClick={handleStart}
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
+                  >
+                    {loading ? 'Starting...' : 'Resume'}
+                  </button>
+                )}
 
-              {hasActiveCheckout && hasActiveEntry && isRunning && (
-                <button
-                  onClick={handlePause}
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium text-base"
-                >
-                  {loading ? 'Pausing...' : 'Pause'}
-                </button>
-              )}
+                {hasActiveCheckout && hasActiveEntry && (
+                  <div className="flex gap-2 flex-1">
+                    {isRunning && (
+                      <button
+                        onClick={handlePause}
+                        disabled={loading}
+                        className="flex-1 px-3 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium text-sm"
+                      >
+                        {loading ? 'Pausing...' : 'Pause'}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleStop}
+                      disabled={loading}
+                      className="flex-1 px-3 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-medium text-sm"
+                    >
+                      {loading ? 'Stopping...' : 'Stop'}
+                    </button>
+                  </div>
+                )}
+              </div>
 
+              {/* Small details button */}
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   navigate(`/timer/${timer.id}`);
                 }}
-                className="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium text-base"
+                className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 font-medium text-sm"
+                title="View details"
               >
-                Details
+                📊
               </button>
             </div>
 
             {/* Quick checkout buttons */}
             {!hasActiveCheckout && quickOptions.length > 0 && (
               <div>
-                <div className="text-sm text-gray-600 mb-2 font-medium">Quick Checkout:</div>
+                <div className="text-sm text-gray-600 mb-2 font-medium">Quick Start:</div>
                 <div className="grid grid-cols-3 gap-2">
                   {quickOptions.slice(0, 5).map((option) => (
                     <button

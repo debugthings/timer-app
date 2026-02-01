@@ -122,6 +122,13 @@ Returns:
 
 **Note:** Changing the saved alarm sound for a timer requires admin authentication. However, previewing sounds is available to everyone.
 
+### Timezone Configuration
+
+Timer availability is based on your configured timezone. Make sure to set the correct timezone in the Admin Panel under Settings to ensure timers become available at the right times.
+
+**Default timezone:** Eastern Time (America/New_York)  
+**To change:** Go to Admin Panel → Settings → Timezone
+
 ### Available Alarm Sounds
 
 All alarm sounds use high-quality OGG audio files for authentic, professional sound quality:

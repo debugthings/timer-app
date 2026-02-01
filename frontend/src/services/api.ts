@@ -41,6 +41,9 @@ export const verifyPin = (data: VerifyPinRequest) =>
 export const setPin = (data: SetPinRequest) =>
   api.post<{ success: boolean }>('/admin/set-pin', data).then((r) => r.data);
 
+export const updateSettings = (data: { timezone?: string }) =>
+  api.put<{ timezone: string }>('/admin/settings', data).then((r) => r.data);
+
 // People
 export const getPeople = () => api.get<Person[]>('/people').then((r) => r.data);
 
@@ -71,6 +74,13 @@ export const updateTimerAlarmSound = (id: string, alarmSound: string) =>
 
 export const deleteTimer = (id: string) =>
   api.delete<{ success: boolean }>(`/timers/${id}`).then((r) => r.data);
+
+// Alarm audit logs
+export const getAlarmLogs = (timerId: string, limit?: number) =>
+  api.get(`/timers/${timerId}/alarm-logs`, { params: limit ? { limit } : {} }).then((r) => r.data);
+
+export const createAlarmLog = (timerId: string, data: { action: string; soundType?: string; details?: string }) =>
+  api.post(`/timers/${timerId}/alarm-logs`, data).then((r) => r.data);
 
 // Allocations
 export const getAllocation = (timerId: string, date?: string) => {

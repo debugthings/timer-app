@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { startContinuousAlarm, stopContinuousAlarm, AlarmSound } from '../utils/notifications';
+import { createAlarmLog } from '../services/api';
 
 interface AlarmState {
   isActive: boolean;
@@ -11,7 +12,7 @@ interface AlarmState {
 
 interface GlobalAlarmContextType {
   alarmState: AlarmState | null;
-  triggerAlarm: (timerName: string, personName?: string, reason?: 'completed' | 'expired', sound?: AlarmSound) => void;
+  triggerAlarm: (timerId: string, timerName: string, personName?: string, reason?: 'completed' | 'expired', sound?: AlarmSound) => void;
   acknowledgeAlarm: () => void;
 }
 
@@ -20,7 +21,8 @@ const GlobalAlarmContext = createContext<GlobalAlarmContextType | null>(null);
 export function GlobalAlarmProvider({ children }: { children: ReactNode }) {
   const [alarmState, setAlarmState] = useState<AlarmState | null>(null);
 
-  const triggerAlarm = useCallback((
+  const triggerAlarm = useCallback(async (
+    timerId: string,
     timerName: string,
     personName?: string,
     reason: 'completed' | 'expired' = 'completed',
@@ -39,6 +41,17 @@ export function GlobalAlarmProvider({ children }: { children: ReactNode }) {
 
     // Start the continuous alarm sound
     startContinuousAlarm(sound);
+
+    // Log the alarm trigger event
+    try {
+      await createAlarmLog(timerId, {
+        action: 'triggered',
+        soundType: sound,
+        details: `Alarm triggered for ${reason} event`,
+      });
+    } catch (error) {
+      console.error('Failed to log alarm trigger:', error);
+    }
   }, [alarmState?.isActive]);
 
   const acknowledgeAlarm = useCallback(() => {

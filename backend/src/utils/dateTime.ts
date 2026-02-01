@@ -3,7 +3,7 @@ import { prisma } from '../index';
 // Get timezone from settings
 export async function getTimezone(): Promise<string> {
   const settings = await prisma.settings.findFirst();
-  return settings?.timezone || 'UTC';
+  return settings?.timezone || 'America/New_York'; // Default to Eastern Time
 }
 
 // Get start of day in configured timezone

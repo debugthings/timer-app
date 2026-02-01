@@ -15,7 +15,7 @@ router.get('/settings', async (req, res) => {
       settings = await prisma.settings.create({
         data: {
           id: 1,
-          timezone: 'UTC',
+          timezone: 'America/New_York',
         },
       });
     }
@@ -94,7 +94,7 @@ router.post('/set-pin', async (req, res) => {
         data: {
           id: 1,
           adminPinHash: hashedPin,
-          timezone: 'UTC',
+          timezone: 'America/New_York',
         },
       });
     }

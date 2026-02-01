@@ -91,7 +91,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
     if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
       // Timer expired, show notification and alarm
       const alarmSound = normalizeAlarmSound(checkout.timer?.alarmSound || 'helium');
-      triggerAlarm(checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'expired', alarmSound);
+      triggerAlarm(checkout.timerId, checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'expired', alarmSound);
       showNotification('Timer Expired', {
         body: 'This timer has expired for today and has been stopped.',
         requireInteraction: true,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  getSettings,
   getPeople,
   getTimers,
   createPerson,
@@ -10,6 +11,7 @@ import {
   updateAllocation,
   deletePerson,
   deleteTimer,
+  updateSettings,
 } from '../services/api';
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
@@ -23,10 +25,10 @@ export function AdminPanel() {
   // Refresh session on user activity
   useEffect(() => {
     const handleActivity = () => refreshSession();
-    
+
     window.addEventListener('click', handleActivity);
     window.addEventListener('keypress', handleActivity);
-    
+
     return () => {
       window.removeEventListener('click', handleActivity);
       window.removeEventListener('keypress', handleActivity);
@@ -36,6 +38,14 @@ export function AdminPanel() {
   const handleExitAdmin = () => {
     clearAdminSession();
     navigate('/');
+  };
+
+  const handleUpdateTimezone = async () => {
+    try {
+      await updateSettingsMutation.mutateAsync({ timezone });
+    } catch (error) {
+      console.error('Failed to update timezone:', error);
+    }
   };
   const [showPersonForm, setShowPersonForm] = useState(false);
   const [showTimerForm, setShowTimerForm] = useState(false);
@@ -48,6 +58,7 @@ export function AdminPanel() {
   });
   const [defaultStartTime, setDefaultStartTime] = useState('');
   const [defaultExpirationTime, setDefaultExpirationTime] = useState('');
+  const [timezone, setTimezone] = useState('America/New_York');
   const [useSchedule, setUseSchedule] = useState(false);
   const [schedules, setSchedules] = useState<Array<{ dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }>>([]);
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
@@ -57,6 +68,18 @@ export function AdminPanel() {
   const [scheduleExpirationTime, setScheduleExpirationTime] = useState('');
   const [editingTimer, setEditingTimer] = useState<Timer | null>(null);
   const [deletingTimer, setDeletingTimer] = useState<{ id: string; name: string } | null>(null);
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
+  });
+
+  // Update timezone state when settings load
+  useEffect(() => {
+    if (settings?.timezone) {
+      setTimezone(settings.timezone);
+    }
+  }, [settings?.timezone]);
 
   const { data: people = [] } = useQuery({
     queryKey: ['people'],
@@ -98,6 +121,13 @@ export function AdminPanel() {
     mutationFn: deleteTimer,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
   });
 
@@ -700,6 +730,45 @@ export function AdminPanel() {
             {timers.length === 0 && (
               <p className="text-gray-500 text-center py-4">No timers yet</p>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Settings Section */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold mb-4">Settings</h2>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Timezone
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="flex-1 px-3 py-2 border rounded-lg"
+              >
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">Eastern Time (ET)</option>
+                <option value="America/Chicago">Central Time (CT)</option>
+                <option value="America/Denver">Mountain Time (MT)</option>
+                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                <option value="Europe/London">London (GMT/BST)</option>
+                <option value="Europe/Paris">Paris (CET/CEST)</option>
+                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
+              </select>
+              <button
+                onClick={handleUpdateTimezone}
+                disabled={updateSettingsMutation.isPending}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              >
+                {updateSettingsMutation.isPending ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              This affects timer availability times and day calculations. Current: {settings?.timezone || 'UTC'}
+            </p>
           </div>
         </div>
       </div>

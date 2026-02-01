@@ -487,6 +487,52 @@ router.get('/:id/expiration', async (req, res) => {
   }
 });
 
+// Get alarm audit logs for a timer
+router.get('/:id/alarm-logs', async (req, res) => {
+  const { id } = req.params;
+  const { limit = '50' } = req.query;
+
+  try {
+    const logs = await prisma.alarmAuditLog.findMany({
+      where: { timerId: id },
+      include: {
+        timer: {
+          select: { name: true, person: { select: { name: true } } }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit as string, 10),
+    });
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Get alarm logs error:', error);
+    res.status(500).json({ error: 'Failed to get alarm logs' });
+  }
+});
+
+// Create alarm audit log entry
+router.post('/:id/alarm-logs', async (req, res) => {
+  const { id } = req.params;
+  const { action, soundType, details } = req.body;
+
+  try {
+    const log = await prisma.alarmAuditLog.create({
+      data: {
+        timerId: id,
+        action,
+        soundType,
+        details,
+      },
+    });
+
+    res.json(log);
+  } catch (error) {
+    console.error('Create alarm log error:', error);
+    res.status(500).json({ error: 'Failed to create alarm log' });
+  }
+});
+
 // Delete timer (admin only)
 router.delete('/:id', requireAdminPin, async (req, res) => {
   const { id } = req.params;
