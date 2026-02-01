@@ -290,6 +290,40 @@ router.post('/', requireAdminPin, async (req, res) => {
   }
 });
 
+// Update timer alarm sound (public - anyone can change alarm sounds)
+router.patch('/:id/alarm-sound', async (req, res) => {
+  const { id } = req.params;
+  const { alarmSound } = req.body;
+
+  // Validate alarm sound
+  const validAlarmSounds = ['classic', 'urgent', 'chime', 'bell', 'buzz'];
+  if (!alarmSound || !validAlarmSounds.includes(alarmSound)) {
+    return res.status(400).json({
+      error: 'Invalid alarm sound. Must be one of: ' + validAlarmSounds.join(', ')
+    });
+  }
+
+  try {
+    const timer = await prisma.timer.update({
+      where: { id },
+      data: { alarmSound },
+      select: {
+        id: true,
+        name: true,
+        alarmSound: true,
+      },
+    });
+
+    res.json(timer);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Timer not found' });
+    }
+    console.error('Update alarm sound error:', error);
+    res.status(500).json({ error: 'Failed to update alarm sound' });
+  }
+});
+
 // Update timer (admin only)
 router.put('/:id', requireAdminPin, async (req, res) => {
   const { id } = req.params;

@@ -46,9 +46,10 @@
 **How It Works:**
 1. User clicks alarm icon (🔔) on any timer card
 2. Dropdown shows all available alarm sounds
-3. Clicking a sound plays a 1.5-second preview (no auth required)
-4. Current alarm sound is marked with ✓
-5. If user tries to change the saved sound without admin auth, preview still plays
+3. **Click** a sound plays a 1.5-second preview (no auth required)
+4. **Double-click** a sound to save it permanently (no auth required)
+5. Current alarm sound is marked with ✓ and highlighted
+6. Anyone can change alarm sounds - no admin PIN needed
 
 ## Testing
 

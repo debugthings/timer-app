@@ -56,7 +56,7 @@ iOS requires the app to be installed as a PWA to enable notifications. Follow th
 ## Alarm Sound System
 
 ### Overview
-Each timer can have its own alarm sound. **All users can preview alarm sounds without authentication** - just click on the alarm icon (🔔) on any timer card to hear different alarm options.
+Each timer can have its own alarm sound. **All users can preview and save alarm sounds without authentication** - just click on the alarm icon (🔔) on any timer card to hear different alarm options. Double-click to save your selection.
 
 ### Public Alarm Sound API
 

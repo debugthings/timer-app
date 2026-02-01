@@ -66,6 +66,9 @@ export const createTimer = (data: CreateTimerRequest) =>
 export const updateTimer = (id: string, data: UpdateTimerRequest) =>
   api.put<Timer>(`/timers/${id}`, data).then((r) => r.data);
 
+export const updateTimerAlarmSound = (id: string, alarmSound: string) =>
+  api.patch<Pick<Timer, 'id' | 'name' | 'alarmSound'>>(`/timers/${id}/alarm-sound`, { alarmSound }).then((r) => r.data);
+
 export const deleteTimer = (id: string) =>
   api.delete<{ success: boolean }>(`/timers/${id}`).then((r) => r.data);
 
