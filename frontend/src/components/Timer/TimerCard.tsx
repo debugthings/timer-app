@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { createCheckout, startCheckout, pauseCheckout, updateTimerAlarmSound } from '../../services/api';
-import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS } from '../../utils/notifications';
+import { showNotification, startContinuousAlarm, stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
@@ -18,11 +18,32 @@ export function TimerCard({ timer }: TimerCardProps) {
   const [loading, setLoading] = useState(false);
   const [showAlarmSelector, setShowAlarmSelector] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const allocation = timer.todayAllocation;
   const hasNotifiedRef = useRef(false);
   const availability = useTimerAvailability(timer.id);
   const isAvailable = availability.available;
   const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
+
+  // Quick checkout options (only show if enough time remaining)
+  const remainingSeconds = allocation
+    ? allocation.totalSeconds - allocation.usedSeconds
+    : timer.defaultDailySeconds;
+
+  const quickOptions = [
+    { label: '10m', minutes: 10 },
+    { label: '15m', minutes: 15 },
+    { label: '30m', minutes: 30 },
+    { label: '45m', minutes: 45 },
+    { label: '1hr', minutes: 60 },
+  ].filter(option => option.minutes * 60 <= remainingSeconds);
+
+  const createCheckoutMutation = useMutation({
+    mutationFn: createCheckout,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
   
   const activeCheckout = allocation?.checkouts?.find(
     (c) => c.status === 'ACTIVE' || c.status === 'PAUSED'
@@ -114,6 +135,34 @@ export function TimerCard({ timer }: TimerCardProps) {
       setLiveCheckoutUsed(activeCheckout?.usedSeconds || 0);
     }
   }, [isRunning, hasActiveEntry, activeCheckout, timer.name, timer.person?.name]);
+
+  // Handle click outside and focus loss for dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAlarmSelector(false);
+      }
+    };
+
+    const handleFocusOut = (event: FocusEvent) => {
+      // Delay to allow click events to process first
+      setTimeout(() => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.relatedTarget as Node)) {
+          setShowAlarmSelector(false);
+        }
+      }, 100);
+    };
+
+    if (showAlarmSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+      dropdownRef.current?.addEventListener('focusout', handleFocusOut);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      dropdownRef.current?.removeEventListener('focusout', handleFocusOut);
+    };
+  }, [showAlarmSelector]);
 
   const checkoutRemainingSeconds = activeCheckout
     ? activeCheckout.allocatedSeconds - liveCheckoutUsed
@@ -220,9 +269,25 @@ export function TimerCard({ timer }: TimerCardProps) {
       setShowAlarmSelector(false);
 
       // Play preview of the saved sound
-      handleAlarmSoundPreview(newSound);
+      handleAlarmSoundPreview(normalizeAlarmSound(newSound));
     } catch (error) {
       console.error('Failed to update alarm sound:', error);
+    }
+  };
+
+  const handleQuickCheckout = async (minutes: number) => {
+    if (operationInProgress.current || createCheckoutMutation.isPending) return;
+    operationInProgress.current = true;
+
+    try {
+      await createCheckoutMutation.mutateAsync({
+        timerId: timer.id,
+        allocatedSeconds: minutes * 60,
+      });
+    } catch (error) {
+      console.error('Failed to create quick checkout:', error);
+    } finally {
+      operationInProgress.current = false;
     }
   };
 
@@ -241,16 +306,61 @@ export function TimerCard({ timer }: TimerCardProps) {
                 Schedule: {scheduleSummary}
               </p>
             )}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowAlarmSelector(!showAlarmSelector);
-              }}
-              className="text-xs text-gray-500 hover:text-gray-700 mt-1 flex items-center gap-1"
-            >
-              🔔 {ALARM_SOUND_LABELS[timer.alarmSound]}
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowAlarmSelector(!showAlarmSelector);
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 mt-1 flex items-center gap-1"
+                aria-expanded={showAlarmSelector}
+                aria-haspopup="listbox"
+              >
+                🔔 {ALARM_SOUND_LABELS[timer.alarmSound]}
+              </button>
+              {showAlarmSelector && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
+                  onClick={(e) => e.stopPropagation()}
+                  role="listbox"
+                  tabIndex={-1}
+                >
+                  <div className="text-xs text-gray-500 font-semibold mb-2">
+                    Click to preview • Double-click to save:
+                  </div>
+                  {(Object.keys(ALARM_SOUND_LABELS) as AlarmSound[]).map((sound) => (
+                    <div key={sound} className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAlarmSoundPreview(sound);
+                        }}
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAlarmSoundChange(sound);
+                        }}
+                        className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
+                          timer.alarmSound === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
+                        }`}
+                        title="Click to preview • Double-click to save"
+                      >
+                        {ALARM_SOUND_LABELS[sound]}
+                        {timer.alarmSound === sound && (
+                          <span className="ml-2 text-blue-600">✓</span>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                  <div className="text-xs text-gray-400 mt-2 pt-2 border-t">
+                    💡 Click to preview • Double-click to save
+                  </div>
+                </div>
+              )}
+            </div>
             {showAlarmSelector && (
               <div 
                 className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
@@ -335,71 +445,106 @@ export function TimerCard({ timer }: TimerCardProps) {
           )}
         </div>
 
-        {!hasActiveCheckout ? (
-          <div className="flex justify-between items-center text-sm mb-4">
-            <span className="text-gray-600">
-              {formatTime(liveUsedSeconds)} used
-            </span>
-            <span className="font-bold text-lg">{formatTime(dailyRemainingSeconds)} left</span>
-          </div>
-        ) : (
-          <div className="space-y-2 mb-4">
-            {/* Daily allocation */}
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">Daily:</span>
-              <span className="font-medium">{formatTime(dailyRemainingSeconds)} left</span>
+        {/* Time Display */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          {!hasActiveCheckout ? (
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
+                {formatTime(dailyRemainingSeconds)}
+              </div>
+              <div className="text-sm text-gray-600">remaining today</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {formatTime(liveUsedSeconds)} used
+              </div>
             </div>
-            {/* Active checkout */}
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">Checkout:</span>
-              <span className="font-bold text-lg text-blue-600">{formatTime(checkoutRemainingSeconds)} left</span>
+          ) : (
+            <div className="space-y-3">
+              {/* Daily allocation */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Daily Remaining:</span>
+                <span className="text-lg font-bold text-blue-600">{formatTime(dailyRemainingSeconds)}</span>
+              </div>
+              {/* Active checkout */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Current Session:</span>
+                <span className="text-xl font-bold text-green-600">{formatTime(checkoutRemainingSeconds)}</span>
+              </div>
+              <div className="text-xs text-gray-500 text-center">
+                {formatTime(liveUsedSeconds)} used today
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Start/Stop buttons */}
+        {/* Action buttons */}
         {isAvailable && dailyRemainingSeconds > 0 && (
-          <div className="flex gap-2">
-            {!hasActiveCheckout && (
+          <div className="space-y-3">
+            {/* Main action buttons */}
+            <div className="flex gap-2">
+              {!hasActiveCheckout && (
+                <button
+                  onClick={handleStart}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
+                >
+                  {loading ? 'Starting...' : 'Start Full Session'}
+                </button>
+              )}
+
+              {hasActiveCheckout && !hasActiveEntry && (
+                <button
+                  onClick={handleStart}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-base"
+                >
+                  {loading ? 'Starting...' : 'Resume'}
+                </button>
+              )}
+
+              {hasActiveCheckout && hasActiveEntry && isRunning && (
+                <button
+                  onClick={handlePause}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium text-base"
+                >
+                  {loading ? 'Pausing...' : 'Pause'}
+                </button>
+              )}
+
               <button
-                onClick={handleStart}
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium text-sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate(`/timer/${timer.id}`);
+                }}
+                className="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium text-base"
               >
-                {loading ? 'Starting...' : 'Start'}
+                Details
               </button>
+            </div>
+
+            {/* Quick checkout buttons */}
+            {!hasActiveCheckout && quickOptions.length > 0 && (
+              <div>
+                <div className="text-sm text-gray-600 mb-2 font-medium">Quick Checkout:</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {quickOptions.slice(0, 5).map((option) => (
+                    <button
+                      key={option.label}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleQuickCheckout(option.minutes);
+                      }}
+                      disabled={createCheckoutMutation.isPending}
+                      className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium text-sm"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            
-            {hasActiveCheckout && !hasActiveEntry && (
-              <button
-                onClick={handleStart}
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium text-sm"
-              >
-                {loading ? 'Starting...' : 'Resume'}
-              </button>
-            )}
-            
-            {hasActiveCheckout && hasActiveEntry && isRunning && (
-              <button
-                onClick={handlePause}
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium text-sm"
-              >
-                {loading ? 'Pausing...' : 'Pause'}
-              </button>
-            )}
-            
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                navigate(`/timer/${timer.id}`);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium text-sm"
-            >
-              Details
-            </button>
           </div>
         )}
       </div>

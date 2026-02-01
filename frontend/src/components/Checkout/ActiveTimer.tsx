@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Checkout } from '../../types';
 import { formatTime } from '../../utils/time';
 import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
-import { showNotification, AlarmSound } from '../../utils/notifications';
+import { showNotification, normalizeAlarmSound } from '../../utils/notifications';
 import { useTimerExpiration } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
@@ -90,7 +90,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   useEffect(() => {
     if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
       // Timer expired, show notification and alarm
-      const alarmSound = (checkout.timer?.alarmSound as AlarmSound) || 'classic';
+      const alarmSound = normalizeAlarmSound(checkout.timer?.alarmSound || 'helium');
       triggerAlarm(checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'expired', alarmSound);
       showNotification('Timer Expired', {
         body: 'This timer has expired for today and has been stopped.',

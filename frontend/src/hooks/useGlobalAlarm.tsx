@@ -24,7 +24,7 @@ export function GlobalAlarmProvider({ children }: { children: ReactNode }) {
     timerName: string,
     personName?: string,
     reason: 'completed' | 'expired' = 'completed',
-    sound: AlarmSound = 'classic'
+    sound: AlarmSound = 'helium'
   ) => {
     // Only trigger if not already active (prevent duplicates)
     if (alarmState?.isActive) return;

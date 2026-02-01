@@ -263,7 +263,7 @@ router.post('/', requireAdminPin, async (req, res) => {
         defaultDailySeconds,
         defaultStartTime: defaultStartTime || null,
         defaultExpirationTime: defaultExpirationTime || null,
-        alarmSound: alarmSound || 'classic',
+        alarmSound: alarmSound || 'helium',
         schedules: schedules ? {
           create: schedules.map((s: { dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }) => ({
             dayOfWeek: s.dayOfWeek,
@@ -296,7 +296,13 @@ router.patch('/:id/alarm-sound', async (req, res) => {
   const { alarmSound } = req.body;
 
   // Validate alarm sound
-  const validAlarmSounds = ['classic', 'urgent', 'chime', 'bell', 'buzz'];
+  const validAlarmSounds = [
+    'helium', 'firedrill', 'cesium', 'osmium', 'plutonium',
+    'neon', 'argon', 'krypton', 'oxygen', 'carbon',
+    'analysis', 'departure', 'timing', 'scandium', 'barium',
+    'curium', 'fermium', 'hassium', 'copernicium', 'nobelium',
+    'neptunium', 'promethium'
+  ];
   if (!alarmSound || !validAlarmSounds.includes(alarmSound)) {
     return res.status(400).json({
       error: 'Invalid alarm sound. Must be one of: ' + validAlarmSounds.join(', ')

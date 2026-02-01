@@ -106,11 +106,17 @@ GET /api/sounds/alarm-sounds
 Returns:
 ```json
 [
-  { "id": "classic", "label": "Helium", "description": "Clear, classic alarm tone" },
-  { "id": "urgent", "label": "FireDrill", "description": "High-priority emergency alert" },
-  { "id": "chime", "label": "Cesium", "description": "Pleasant, melodic notification" },
-  { "id": "bell", "label": "Osmium", "description": "Deep, resonant bell tone" },
-  { "id": "buzz", "label": "Plutonium", "description": "Vibration-like buzz pattern" }
+  { "id": "helium", "label": "Helium", "description": "Clear, classic alarm tone" },
+  { "id": "firedrill", "label": "FireDrill", "description": "High-priority emergency alert" },
+  { "id": "cesium", "label": "Cesium", "description": "Pleasant, melodic notification" },
+  { "id": "osmium", "label": "Osmium", "description": "Deep, resonant bell tone" },
+  { "id": "plutonium", "label": "Plutonium", "description": "Vibration-like buzz pattern" },
+  { "id": "neon", "label": "Neon", "description": "Bright, electronic tone" },
+  { "id": "argon", "label": "Argon", "description": "Smooth, atmospheric sound" },
+  { "id": "krypton", "label": "Krypton", "description": "Mysterious, otherworldly tone" },
+  { "id": "oxygen", "label": "Oxygen", "description": "Fresh, lively notification" },
+  { "id": "carbon", "label": "Carbon", "description": "Fundamental, essential tone" },
+  // ... and 12 more sounds
 ]
 ```
 
@@ -120,11 +126,28 @@ Returns:
 
 All alarm sounds use high-quality OGG audio files for authentic, professional sound quality:
 
-1. **Helium** - Clear, classic alarm tone (moderate urgency, pleasant)
-2. **FireDrill** - High-priority emergency alert (maximum attention-grabbing)
-3. **Cesium** - Pleasant, melodic notification (gentle and musical)
-4. **Osmium** - Deep, resonant bell tone (traditional alarm sound)
-5. **Plutonium** - Vibration-like buzz pattern (modern alert sound)
+1. **Helium** - Clear, classic alarm tone
+2. **FireDrill** - High-priority emergency alert
+3. **Cesium** - Pleasant, melodic notification
+4. **Osmium** - Deep, resonant bell tone
+5. **Plutonium** - Vibration-like buzz pattern
+6. **Neon** - Bright, electronic tone
+7. **Argon** - Smooth, atmospheric sound
+8. **Krypton** - Mysterious, otherworldly tone
+9. **Oxygen** - Fresh, lively notification
+10. **Carbon** - Fundamental, essential tone
+11. **Analysis** - Analytical, thinking sound
+12. **Departure** - Travel, movement alert
+13. **Timing** - Precise, clockwork sound
+14. **Scandium** - Rare earth, unique tone
+15. **Barium** - Heavy, substantial alert
+16. **Curium** - Radioactive, intense sound
+17. **Fermium** - Synthetic, artificial tone
+18. **Hassium** - Superheavy, powerful alert
+19. **Copernicium** - Revolutionary, changing sound
+20. **Nobelium** - Noble, distinguished tone
+21. **Neptunium** - Distant, planetary alert
+22. **Promethium** - Promethean, gifted sound
 
 ### How to Change Alarm Sound
 

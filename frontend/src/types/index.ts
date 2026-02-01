@@ -20,7 +20,12 @@ export interface TimerSchedule {
   createdAt: string;
 }
 
-export type AlarmSound = 'classic' | 'urgent' | 'chime' | 'bell' | 'buzz';
+export type AlarmSound =
+  | 'helium' | 'firedrill' | 'cesium' | 'osmium' | 'plutonium'
+  | 'neon' | 'argon' | 'krypton' | 'oxygen' | 'carbon'
+  | 'analysis' | 'departure' | 'timing' | 'scandium' | 'barium'
+  | 'curium' | 'fermium' | 'hassium' | 'copernicium' | 'nobelium'
+  | 'neptunium' | 'promethium';
 
 export interface Timer {
   id: string;

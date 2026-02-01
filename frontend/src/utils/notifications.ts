@@ -70,24 +70,80 @@ export async function playCompletionSound(): Promise<void> {
   }
 }
 
-// Alarm sound types
-export type AlarmSound = 'classic' | 'urgent' | 'chime' | 'bell' | 'buzz';
+// Alarm sound types - expanded to include more available OGG files
+export type AlarmSound =
+  | 'helium' | 'firedrill' | 'cesium' | 'osmium' | 'plutonium'
+  | 'neon' | 'argon' | 'krypton' | 'oxygen' | 'carbon'
+  | 'analysis' | 'departure' | 'timing' | 'scandium' | 'barium'
+  | 'curium' | 'fermium' | 'hassium' | 'copernicium' | 'nobelium'
+  | 'neptunium' | 'promethium';
+
+// Backward compatibility mapping for database values
+const LEGACY_ALARM_SOUND_MAPPING: Record<string, AlarmSound> = {
+  'classic': 'helium',
+  'urgent': 'firedrill',
+  'chime': 'cesium',
+  'bell': 'osmium',
+  'buzz': 'plutonium',
+};
+
+// Convert legacy database values to new AlarmSound type
+export function normalizeAlarmSound(sound: string | AlarmSound): AlarmSound {
+  if (typeof sound === 'string' && LEGACY_ALARM_SOUND_MAPPING[sound]) {
+    return LEGACY_ALARM_SOUND_MAPPING[sound];
+  }
+  return sound as AlarmSound;
+}
 
 export const ALARM_SOUND_LABELS: Record<AlarmSound, string> = {
-  classic: 'Helium',
-  urgent: 'FireDrill',
-  chime: 'Cesium',
-  bell: 'Osmium',
-  buzz: 'Plutonium',
+  helium: 'Helium',
+  firedrill: 'FireDrill',
+  cesium: 'Cesium',
+  osmium: 'Osmium',
+  plutonium: 'Plutonium',
+  neon: 'Neon',
+  argon: 'Argon',
+  krypton: 'Krypton',
+  oxygen: 'Oxygen',
+  carbon: 'Carbon',
+  analysis: 'Analysis',
+  departure: 'Departure',
+  timing: 'Timing',
+  scandium: 'Scandium',
+  barium: 'Barium',
+  curium: 'Curium',
+  fermium: 'Fermium',
+  hassium: 'Hassium',
+  copernicium: 'Copernicium',
+  nobelium: 'Nobelium',
+  neptunium: 'Neptunium',
+  promethium: 'Promethium',
 };
 
 // Map alarm types to OGG files
 const ALARM_SOUND_FILES: Record<AlarmSound, string> = {
-  classic: '/media/alarms/Helium.ogg',     // Clear, classic alarm
-  urgent: '/media/alarms/FireDrill.ogg',  // Urgent, attention-grabbing
-  chime: '/media/alarms/Cesium.ogg',      // Pleasant, melodic
-  bell: '/media/alarms/Osmium.ogg',       // Bell-like, resonant
-  buzz: '/media/alarms/Plutonium.ogg',    // Buzzing, vibrating
+  helium: '/media/alarms/Helium.ogg',
+  firedrill: '/media/alarms/FireDrill.ogg',
+  cesium: '/media/alarms/Cesium.ogg',
+  osmium: '/media/alarms/Osmium.ogg',
+  plutonium: '/media/alarms/Plutonium.ogg',
+  neon: '/media/alarms/Neon.ogg',
+  argon: '/media/alarms/Argon.ogg',
+  krypton: '/media/alarms/Krypton.ogg',
+  oxygen: '/media/alarms/Oxygen.ogg',
+  carbon: '/media/alarms/Carbon.ogg',
+  analysis: '/media/alarms/Analysis.ogg',
+  departure: '/media/alarms/Departure.ogg',
+  timing: '/media/alarms/Timing.ogg',
+  scandium: '/media/alarms/Scandium.ogg',
+  barium: '/media/alarms/Barium.ogg',
+  curium: '/media/alarms/Curium.ogg',
+  fermium: '/media/alarms/Fermium.ogg',
+  hassium: '/media/alarms/Hassium.ogg',
+  copernicium: '/media/alarms/Copernicium.ogg',
+  nobelium: '/media/alarms/Nobelium.ogg',
+  neptunium: '/media/alarms/Neptunium.ogg',
+  promethium: '/media/alarms/Promethium.ogg',
 };
 
 // Audio cache for loaded sounds
@@ -96,7 +152,7 @@ const audioCache: Map<string, HTMLAudioElement> = new Map();
 // Continuous alarm system
 let alarmInterval: number | null = null;
 let currentAlarmAudio: HTMLAudioElement | null = null;
-let currentAlarmType: AlarmSound = 'classic';
+let currentAlarmType: AlarmSound = 'helium';
 
 function loadAudio(src: string): Promise<HTMLAudioElement> {
   return new Promise((resolve, reject) => {
@@ -144,7 +200,7 @@ async function playAlarmSound(soundFile: string): Promise<void> {
   }
 }
 
-export function startContinuousAlarm(alarmType: AlarmSound = 'classic'): void {
+export function startContinuousAlarm(alarmType: AlarmSound = 'helium'): void {
   if (alarmInterval) {
     return; // Already playing
   }
@@ -166,11 +222,28 @@ export function startContinuousAlarm(alarmType: AlarmSound = 'classic'): void {
 
   // Then repeat based on alarm type
   const intervals: Record<AlarmSound, number> = {
-    classic: 2000,  // 2 seconds - matches Helium.ogg length
-    urgent: 1500,   // 1.5 seconds - matches FireDrill.ogg pattern
-    chime: 2500,    // 2.5 seconds - matches Cesium.ogg length
-    bell: 3000,     // 3 seconds - matches Osmium.ogg length
-    buzz: 1800,     // 1.8 seconds - matches Plutonium.ogg pattern
+    helium: 2000,     // 2 seconds - matches Helium.ogg length
+    firedrill: 1500,  // 1.5 seconds - matches FireDrill.ogg pattern
+    cesium: 2500,     // 2.5 seconds - matches Cesium.ogg length
+    osmium: 3000,     // 3 seconds - matches Osmium.ogg length
+    plutonium: 1800,  // 1.8 seconds - matches Plutonium.ogg pattern
+    neon: 2000,       // Default timing
+    argon: 2200,      // Slightly different timing
+    krypton: 2400,    // Varied timing
+    oxygen: 2100,     // Medium timing
+    carbon: 1900,     // Fast timing
+    analysis: 2300,   // Analytical timing
+    departure: 2500,  // Travel timing
+    timing: 2000,     // Clockwork timing
+    scandium: 2100,   // Unique timing
+    barium: 2400,     // Heavy timing
+    curium: 2600,     // Intense timing
+    fermium: 2200,    // Artificial timing
+    hassium: 2800,    // Powerful timing
+    copernicium: 2400,// Revolutionary timing
+    nobelium: 2300,   // Distinguished timing
+    neptunium: 2500,  // Planetary timing
+    promethium: 2200, // Gifted timing
   };
 
   alarmInterval = window.setInterval(playAlarmBeep, intervals[currentAlarmType]);
