@@ -3,7 +3,7 @@ import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAlarmLog } from '../../services/api';
+import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAuditLog } from '../../services/api';
 import { showNotification, stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
@@ -283,8 +283,8 @@ export function TimerCard({ timer }: TimerCardProps) {
 
     // Log the alarm acknowledgment
     try {
-      await createAlarmLog(timer.id, {
-        action: 'acknowledged',
+      await createAuditLog(timer.id, {
+        action: 'alarm_acknowledged',
         details: 'User acknowledged alarm',
       });
     } catch (error) {
@@ -298,10 +298,9 @@ export function TimerCard({ timer }: TimerCardProps) {
 
     // Log the alarm preview action
     try {
-      await createAlarmLog(timer.id, {
-        action: 'preview',
-        soundType: sound,
-        details: 'User previewed alarm sound',
+      await createAuditLog(timer.id, {
+        action: 'alarm_preview',
+        details: `User previewed alarm sound (${sound})`,
       });
     } catch (error) {
       console.error('Failed to log alarm preview:', error);

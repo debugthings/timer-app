@@ -75,7 +75,14 @@ export const updateTimerAlarmSound = (id: string, alarmSound: string) =>
 export const deleteTimer = (id: string) =>
   api.delete<{ success: boolean }>(`/timers/${id}`).then((r) => r.data);
 
-// Alarm audit logs
+// Audit logs (all timer actions)
+export const getAuditLogs = (timerId: string, limit?: number) =>
+  api.get(`/timers/${timerId}/audit-logs`, { params: limit ? { limit } : {} }).then((r) => r.data);
+
+export const createAuditLog = (timerId: string, data: { action: string; details?: string }) =>
+  api.post(`/timers/${timerId}/audit-logs`, data).then((r) => r.data);
+
+// Legacy alarm logs (for backward compatibility)
 export const getAlarmLogs = (timerId: string, limit?: number) =>
   api.get(`/timers/${timerId}/alarm-logs`, { params: limit ? { limit } : {} }).then((r) => r.data);
 

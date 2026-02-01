@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimer, createCheckout, startCheckout, stopCheckout, getAlarmLogs } from '../services/api';
+import { getTimer, createCheckout, startCheckout, stopCheckout, getAuditLogs } from '../services/api';
 import { ActiveTimer } from '../components/Checkout/ActiveTimer';
 import { formatTime } from '../utils/time';
 import { useTimerAvailability } from '../hooks/useTimerExpiration';
@@ -20,9 +20,9 @@ export function TimerDetail() {
     refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
   });
 
-  const { data: alarmLogs = [] } = useQuery({
-    queryKey: ['alarmLogs', id],
-    queryFn: () => getAlarmLogs(id!, 20), // Get last 20 alarm events
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['auditLogs', id],
+    queryFn: () => getAuditLogs(id!, 20), // Get last 20 audit events
     refetchInterval: 10000, // Refetch every 10 seconds to show new logs
   });
 
@@ -267,36 +267,64 @@ export function TimerDetail() {
           </div>
         )}
 
-        {/* Alarm Audit Logs */}
+        {/* Audit Logs */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Alarm Activity</h3>
-          {alarmLogs.length > 0 ? (
+          <h3 className="text-lg font-semibold mb-4">Timer Activity</h3>
+          {auditLogs.length > 0 ? (
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {alarmLogs.map((log: any) => (
-                <div
-                  key={log.id}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded text-sm"
-                >
-                  <div className="flex-1">
-                    <span className="font-medium capitalize">{log.action}</span>
-                    {log.soundType && (
-                      <span className="ml-2 text-gray-600">({log.soundType})</span>
-                    )}
-                    {log.details && (
-                      <div className="text-xs text-gray-500 mt-1">{log.details}</div>
-                    )}
+              {auditLogs.map((log: any) => {
+                const getActionIcon = (action: string) => {
+                  switch (action) {
+                    case 'checkout_start': return '▶️';
+                    case 'checkout_pause': return '⏸️';
+                    case 'checkout_stop': return '⏹️';
+                    case 'checkout_cancel': return '❌';
+                    case 'alarm_triggered': return '🔊';
+                    case 'alarm_acknowledged': return '✅';
+                    case 'alarm_preview': return '👁️';
+                    default: return '📝';
+                  }
+                };
+
+                const getActionLabel = (action: string) => {
+                  switch (action) {
+                    case 'checkout_start': return 'Started';
+                    case 'checkout_pause': return 'Paused';
+                    case 'checkout_stop': return 'Stopped';
+                    case 'checkout_cancel': return 'Cancelled';
+                    case 'alarm_triggered': return 'Alarm Triggered';
+                    case 'alarm_acknowledged': return 'Alarm Acknowledged';
+                    case 'alarm_preview': return 'Sound Previewed';
+                    default: return action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  }
+                };
+
+                return (
+                  <div
+                    key={log.id}
+                    className="flex justify-between items-center p-3 bg-gray-50 rounded text-sm"
+                  >
+                    <div className="flex items-center flex-1">
+                      <span className="mr-3 text-lg">{getActionIcon(log.action)}</span>
+                      <div>
+                        <span className="font-medium">{getActionLabel(log.action)}</span>
+                        {log.details && (
+                          <div className="text-xs text-gray-500 mt-1">{log.details}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <div className="text-4xl mb-2">📊</div>
-              <p>No alarm activity yet</p>
-              <p className="text-sm">Alarm events will appear here when timers complete or expire</p>
+              <p>No timer activity yet</p>
+              <p className="text-sm">Timer actions will appear here when you start, stop, or interact with timers</p>
             </div>
           )}
         </div>

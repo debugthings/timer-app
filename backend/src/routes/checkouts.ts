@@ -200,6 +200,25 @@ router.post('/:id/start', async (req, res) => {
       return entry;
     });
 
+    // Log the checkout start action
+    try {
+      const checkout = await prisma.checkout.findUnique({
+        where: { id },
+        include: { timer: true }
+      });
+      if (checkout) {
+        await prisma.auditLog.create({
+          data: {
+            timerId: checkout.timerId,
+            action: 'checkout_start',
+            details: `Started checkout for ${checkout.allocatedSeconds} seconds`,
+          },
+        });
+      }
+    } catch (logError) {
+      console.error('Failed to log checkout start:', logError);
+    }
+
     res.json(entry);
   } catch (error: any) {
     console.error('Start timer error:', error);
@@ -235,6 +254,7 @@ router.post('/:id/pause', async (req, res) => {
 
   try {
     // Use transaction for atomicity
+    let durationSeconds = 0; // For logging
     const updatedCheckout = await prisma.$transaction(async (tx) => {
       const checkout = await tx.checkout.findUnique({
         where: { id },
@@ -263,7 +283,7 @@ router.post('/:id/pause', async (req, res) => {
 
       // Cap duration at remaining allocated time to prevent overrun
       const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
-      const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
+      durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
 
       // End the time entry
       await tx.timeEntry.update({
@@ -301,6 +321,19 @@ router.post('/:id/pause', async (req, res) => {
         },
       });
     });
+
+    // Log the checkout pause action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: updatedCheckout.timerId,
+          action: 'checkout_pause',
+          details: `Paused checkout after ${durationSeconds} seconds`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log checkout pause:', logError);
+    }
 
     res.json(updatedCheckout);
   } catch (error: any) {
@@ -398,6 +431,19 @@ router.post('/:id/stop', async (req, res) => {
       });
     });
 
+    // Log the checkout stop action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: updatedCheckout.timerId,
+          action: 'checkout_stop',
+          details: `Stopped checkout - ${updatedCheckout.usedSeconds}/${updatedCheckout.allocatedSeconds} seconds used`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log checkout stop:', logError);
+    }
+
     res.json(updatedCheckout);
   } catch (error: any) {
     console.error('Stop checkout error:', error);
@@ -487,6 +533,19 @@ router.post('/:id/cancel', async (req, res) => {
         },
       });
     });
+
+    // Log the checkout cancel action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: updatedCheckout.timerId,
+          action: 'checkout_cancel',
+          details: `Cancelled checkout - returned time to allocation`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log checkout cancel:', logError);
+    }
 
     res.json(updatedCheckout);
   } catch (error: any) {

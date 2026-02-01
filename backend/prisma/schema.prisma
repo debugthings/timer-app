@@ -37,7 +37,7 @@ model Timer {
   schedules             TimerSchedule[]
   allocations           DailyAllocation[]
   checkouts             Checkout[]
-  alarmAuditLogs       AlarmAuditLog[]
+  auditLogs            AuditLog[]
   createdAt             DateTime          @default(now())
 }
 
@@ -91,12 +91,11 @@ model TimeEntry {
   createdAt       DateTime  @default(now())
 }
 
-model AlarmAuditLog {
+model AuditLog {
   id        String   @id @default(uuid())
   timer     Timer    @relation(fields: [timerId], references: [id], onDelete: Cascade)
   timerId   String
-  action    String // 'triggered', 'acknowledged', 'preview'
-  soundType String? // The alarm sound that was used
-  details   String? // Additional context (e.g., "checkout_completed", "timer_expired")
+  action    String // 'checkout_start', 'checkout_stop', 'checkout_pause', 'checkout_resume', 'checkout_cancel', 'alarm_triggered', 'alarm_acknowledged', 'alarm_preview'
+  details   String? // Additional context and data
   createdAt DateTime @default(now())
 }

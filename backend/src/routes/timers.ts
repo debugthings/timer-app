@@ -487,13 +487,13 @@ router.get('/:id/expiration', async (req, res) => {
   }
 });
 
-// Get alarm audit logs for a timer
-router.get('/:id/alarm-logs', async (req, res) => {
+// Get audit logs for a timer
+router.get('/:id/audit-logs', async (req, res) => {
   const { id } = req.params;
   const { limit = '50' } = req.query;
 
   try {
-    const logs = await prisma.alarmAuditLog.findMany({
+    const logs = await prisma.auditLog.findMany({
       where: { timerId: id },
       include: {
         timer: {
@@ -506,30 +506,29 @@ router.get('/:id/alarm-logs', async (req, res) => {
 
     res.json(logs);
   } catch (error) {
-    console.error('Get alarm logs error:', error);
-    res.status(500).json({ error: 'Failed to get alarm logs' });
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ error: 'Failed to get audit logs' });
   }
 });
 
-// Create alarm audit log entry
-router.post('/:id/alarm-logs', async (req, res) => {
+// Create audit log entry
+router.post('/:id/audit-logs', async (req, res) => {
   const { id } = req.params;
-  const { action, soundType, details } = req.body;
+  const { action, details } = req.body;
 
   try {
-    const log = await prisma.alarmAuditLog.create({
+    const log = await prisma.auditLog.create({
       data: {
         timerId: id,
         action,
-        soundType,
         details,
       },
     });
 
     res.json(log);
   } catch (error) {
-    console.error('Create alarm log error:', error);
-    res.status(500).json({ error: 'Failed to create alarm log' });
+    console.error('Create audit log error:', error);
+    res.status(500).json({ error: 'Failed to create audit log' });
   }
 });
 

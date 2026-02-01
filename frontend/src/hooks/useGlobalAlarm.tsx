@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { startContinuousAlarm, stopContinuousAlarm, AlarmSound } from '../utils/notifications';
-import { createAlarmLog } from '../services/api';
+import { createAuditLog } from '../services/api';
 
 interface AlarmState {
   isActive: boolean;
@@ -44,10 +44,9 @@ export function GlobalAlarmProvider({ children }: { children: ReactNode }) {
 
     // Log the alarm trigger event
     try {
-      await createAlarmLog(timerId, {
-        action: 'triggered',
-        soundType: sound,
-        details: `Alarm triggered for ${reason} event`,
+      await createAuditLog(timerId, {
+        action: 'alarm_triggered',
+        details: `Alarm triggered for ${reason} event (${sound})`,
       });
     } catch (error) {
       console.error('Failed to log alarm trigger:', error);
