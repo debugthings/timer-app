@@ -34,8 +34,8 @@ export function PinModal({
         setError('PINs do not match');
         return;
       }
-      if (newPin.length < 4) {
-        setError('PIN must be at least 4 characters');
+      if (!/^\d{4,}$/.test(newPin)) {
+        setError('PIN must be at least 4 digits and contain only numbers');
         return;
       }
     }
@@ -70,6 +70,12 @@ export function PinModal({
     onClose();
   };
 
+  const handleNumericInput = (value: string, setter: (value: string) => void) => {
+    // Only allow numeric characters
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setter(numericValue);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
@@ -79,12 +85,15 @@ export function PinModal({
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Current PIN</label>
               <input
-                type="password"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={currentPin}
-                onChange={(e) => setCurrentPin(e.target.value)}
+                onChange={(e) => handleNumericInput(e.target.value, setCurrentPin)}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 autoFocus
+                maxLength={10}
               />
             </div>
           )}
@@ -92,26 +101,32 @@ export function PinModal({
           {(isFirstTime || requireCurrentPin) ? (
             <>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">New PIN</label>
+                <label className="block text-sm font-medium mb-2">New PIN (4+ digits)</label>
                 <input
-                  type="password"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
+                  onChange={(e) => handleNumericInput(e.target.value, setNewPin)}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   minLength={4}
                   required
                   autoFocus={!requireCurrentPin}
+                  maxLength={10}
                 />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Confirm PIN</label>
                 <input
-                  type="password"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
+                  onChange={(e) => handleNumericInput(e.target.value, setConfirmPin)}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   minLength={4}
                   required
+                  maxLength={10}
                 />
               </div>
             </>
@@ -119,12 +134,15 @@ export function PinModal({
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Enter Admin PIN</label>
               <input
-                type="password"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={currentPin}
-                onChange={(e) => setCurrentPin(e.target.value)}
+                onChange={(e) => handleNumericInput(e.target.value, setCurrentPin)}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 autoFocus
+                maxLength={10}
               />
             </div>
           )}
