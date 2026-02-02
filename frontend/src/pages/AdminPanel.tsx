@@ -16,6 +16,8 @@ import {
   startCheckout,
   pauseCheckout,
   stopCheckout,
+  forceCheckoutActive,
+  forceCheckoutExpired,
 } from '../services/api';
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
@@ -158,6 +160,20 @@ export function AdminPanel() {
 
   const stopTimerMutation = useMutation({
     mutationFn: (checkoutId: string) => stopCheckout(checkoutId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const forceActiveMutation = useMutation({
+    mutationFn: (checkoutId: string) => forceCheckoutActive(checkoutId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const forceExpiredMutation = useMutation({
+    mutationFn: (checkoutId: string) => forceCheckoutExpired(checkoutId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
     },
@@ -353,6 +369,20 @@ export function AdminPanel() {
     const pausedCheckout = getPausedCheckout(timer);
     if (pausedCheckout) {
       await startTimerMutation.mutateAsync(pausedCheckout.id);
+    }
+  };
+
+  const handleForceActive = async (timer: Timer) => {
+    const checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    if (checkout) {
+      await forceActiveMutation.mutateAsync(checkout.id);
+    }
+  };
+
+  const handleForceExpired = async (timer: Timer) => {
+    const checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    if (checkout) {
+      await forceExpiredMutation.mutateAsync(checkout.id);
     }
   };
 
@@ -804,20 +834,38 @@ export function AdminPanel() {
                       <button
                         onClick={() => handlePauseTimer(timer)}
                         disabled={pauseTimerMutation.isPending}
-                        className="px-3 py-1 text-purple-600 hover:bg-purple-50 rounded text-sm disabled:opacity-50"
+                        className="px-3 py-1 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 rounded text-sm disabled:opacity-50"
                       >
                         {pauseTimerMutation.isPending ? 'Pausing...' : 'Pause'}
                       </button>
                     )}
+                    {(getActiveCheckout(timer) || getPausedCheckout(timer)) && (
+                      <>
+                        <button
+                          onClick={() => handleForceActive(timer)}
+                          disabled={forceActiveMutation.isPending}
+                          className="px-3 py-1 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20 rounded text-sm disabled:opacity-50"
+                        >
+                          {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
+                        </button>
+                        <button
+                          onClick={() => handleForceExpired(timer)}
+                          disabled={forceExpiredMutation.isPending}
+                          className="px-3 py-1 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm disabled:opacity-50"
+                        >
+                          {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => handleEditTimer(timer)}
-                      className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm"
+                      className="px-3 py-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded text-sm"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteTimer(timer.id, timer.name)}
-                      className="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
+                      className="px-3 py-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm"
                     >
                       Delete
                     </button>

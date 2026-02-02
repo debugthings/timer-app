@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../index';
 import { isTimerExpired, getTimerAvailability } from '../utils/timerExpiration';
 import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
+import { requireAdminPin } from '../middleware/adminAuth';
 
 const router = express.Router();
 
@@ -557,6 +558,162 @@ router.post('/:id/cancel', async (req, res) => {
       return res.status(400).json({ error: 'Checkout is already finished' });
     }
     res.status(500).json({ error: 'Failed to cancel checkout' });
+  }
+});
+
+// Force checkout to active state (admin only)
+router.post('/:id/force-active', requireAdminPin, async (req, res) => {
+  const { id } = req.params;
+  const checkoutId = Array.isArray(id) ? id[0] : id;
+
+  try {
+    const checkout = await prisma.checkout.findUnique({
+      where: { id: checkoutId },
+      include: {
+        allocation: true,
+        entries: {
+          where: { endTime: null },
+        },
+      },
+    });
+
+    if (!checkout) {
+      return res.status(404).json({ error: 'Checkout not found' });
+    }
+
+    if (checkout.status === 'COMPLETED' || checkout.status === 'CANCELLED') {
+      return res.status(400).json({ error: 'Cannot force active a completed or cancelled checkout' });
+    }
+
+    let updatedCheckout;
+
+    await prisma.$transaction(async (tx) => {
+      // If there's no active time entry, create one
+      if (checkout.entries.length === 0) {
+        await tx.timeEntry.create({
+          data: {
+            checkoutId: checkoutId,
+            startTime: new Date(),
+          },
+        });
+      }
+
+      // Update checkout status to ACTIVE
+      updatedCheckout = await tx.checkout.update({
+        where: { id: checkoutId },
+        data: { status: 'ACTIVE' },
+        include: {
+          entries: true,
+          allocation: true,
+        },
+      });
+    });
+
+    // Log the force active action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: checkout.timerId,
+          action: 'checkout_force_active',
+          details: `Admin forced checkout to active state`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log force active:', logError);
+    }
+
+    res.json(updatedCheckout);
+  } catch (error: any) {
+    console.error('Force active checkout error:', error);
+    res.status(500).json({ error: 'Failed to force checkout active' });
+  }
+});
+
+// Force checkout to expired state (admin only)
+router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
+  const { id } = req.params;
+  const checkoutId = Array.isArray(id) ? id[0] : id;
+
+  try {
+    const checkout = await prisma.checkout.findUnique({
+      where: { id: checkoutId },
+      include: {
+        allocation: true,
+        entries: {
+          where: { endTime: null },
+        },
+      },
+    });
+
+    if (!checkout) {
+      return res.status(404).json({ error: 'Checkout not found' });
+    }
+
+    if (checkout.status === 'COMPLETED' || checkout.status === 'CANCELLED') {
+      return res.status(400).json({ error: 'Checkout is already completed or cancelled' });
+    }
+
+    let updatedCheckout;
+    let additionalSeconds = 0;
+
+    await prisma.$transaction(async (tx) => {
+      // End any active time entry
+      if (checkout.entries.length > 0) {
+        const activeEntry = checkout.entries[0];
+        const now = new Date();
+        const durationSeconds = Math.floor((now.getTime() - activeEntry.startTime.getTime()) / 1000);
+
+        await tx.timeEntry.update({
+          where: { id: activeEntry.id },
+          data: {
+            endTime: now,
+            durationSeconds,
+          },
+        });
+
+        additionalSeconds = durationSeconds;
+      }
+
+      // Update allocation used seconds with any additional usage
+      if (additionalSeconds > 0) {
+        await tx.dailyAllocation.update({
+          where: { id: checkout.allocationId },
+          data: {
+            usedSeconds: {
+              increment: additionalSeconds,
+            },
+          },
+        });
+      }
+
+      // Update checkout status to COMPLETED
+      updatedCheckout = await tx.checkout.update({
+        where: { id: checkoutId },
+        data: { status: 'COMPLETED' },
+        include: {
+          entries: true,
+          allocation: true,
+        },
+      });
+    });
+
+    // Log the force expired action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: checkout.timerId,
+          action: 'checkout_force_expired',
+          details: `Admin forced checkout to expired state`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log force expired:', logError);
+    }
+
+    res.json(updatedCheckout);
+  } catch (error: any) {
+    console.error('Force expired checkout error:', error);
+    res.status(500).json({ error: 'Failed to force checkout expired' });
   }
 });
 
