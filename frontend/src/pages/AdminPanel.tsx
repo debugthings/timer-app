@@ -373,14 +373,30 @@ export function AdminPanel() {
   };
 
   const handleForceActive = async (timer: Timer) => {
-    const checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
+      // Create a new checkout for remaining time
+      const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
+      checkout = await createCheckoutMutation.mutateAsync({
+        timerId: timer.id,
+        allocatedSeconds: remainingSeconds,
+      });
+    }
     if (checkout) {
       await forceActiveMutation.mutateAsync(checkout.id);
     }
   };
 
   const handleForceExpired = async (timer: Timer) => {
-    const checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+    if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
+      // Create a new checkout for remaining time
+      const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
+      checkout = await createCheckoutMutation.mutateAsync({
+        timerId: timer.id,
+        allocatedSeconds: remainingSeconds,
+      });
+    }
     if (checkout) {
       await forceExpiredMutation.mutateAsync(checkout.id);
     }
@@ -839,7 +855,7 @@ export function AdminPanel() {
                         {pauseTimerMutation.isPending ? 'Pausing...' : 'Pause'}
                       </button>
                     )}
-                    {(getActiveCheckout(timer) || getPausedCheckout(timer)) && (
+                    {timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds && (
                       <>
                         <button
                           onClick={() => handleForceActive(timer)}
