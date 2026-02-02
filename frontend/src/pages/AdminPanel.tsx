@@ -335,6 +335,11 @@ export function AdminPanel() {
     return !!getActiveCheckout(timer);
   };
 
+  // Find the currently active timer (one with active or paused checkout)
+  const getActiveTimer = () => {
+    return timers.find(timer => getActiveCheckout(timer) || getPausedCheckout(timer)) || null;
+  };
+
   const handleStartTimer = async (timer: Timer) => {
     if (!timer.todayAllocation) return;
 
@@ -775,6 +780,168 @@ export function AdminPanel() {
             </form>
           )}
 
+          {/* Active Timer Pane */}
+          {(() => {
+            const activeTimer = getActiveTimer();
+            if (activeTimer) {
+              return (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                  <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center">
+                    <span className="mr-2">🎯</span>
+                    Active Timer: {activeTimer.name}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Timer Info */}
+                    <div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                        <strong>Person:</strong> {activeTimer.person?.name}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                        <strong>Status:</strong>{' '}
+                        {getActiveCheckout(activeTimer) && (
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
+                            Active
+                          </span>
+                        )}
+                        {getPausedCheckout(activeTimer) && (
+                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
+                            Paused
+                          </span>
+                        )}
+                      </div>
+                      {activeTimer.todayAllocation && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                          <strong>Time Remaining:</strong>{' '}
+                          <span className={activeTimer.todayAllocation.totalSeconds - activeTimer.todayAllocation.usedSeconds > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
+                            {formatTime(activeTimer.todayAllocation.totalSeconds - activeTimer.todayAllocation.usedSeconds)} / {formatTime(activeTimer.todayAllocation.totalSeconds)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {canStartTimer(activeTimer) && (
+                          <button
+                            onClick={() => handleStartTimer(activeTimer)}
+                            disabled={createCheckoutMutation.isPending || startTimerMutation.isPending}
+                            className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {createCheckoutMutation.isPending || startTimerMutation.isPending ? 'Starting...' : '▶️ Start'}
+                          </button>
+                        )}
+                        {canResumeTimer(activeTimer) && (
+                          <button
+                            onClick={() => handleResumeTimer(activeTimer)}
+                            disabled={startTimerMutation.isPending}
+                            className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {startTimerMutation.isPending ? 'Resuming...' : '▶️ Resume'}
+                          </button>
+                        )}
+                        {canStopTimer(activeTimer) && (
+                          <button
+                            onClick={() => handleStopTimer(activeTimer)}
+                            disabled={stopTimerMutation.isPending}
+                            className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {stopTimerMutation.isPending ? 'Stopping...' : '⏹️ Stop'}
+                          </button>
+                        )}
+                        {getActiveCheckout(activeTimer) && (
+                          <button
+                            onClick={() => handlePauseTimer(activeTimer)}
+                            disabled={pauseTimerMutation.isPending}
+                            className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 text-sm font-medium"
+                          >
+                            {pauseTimerMutation.isPending ? 'Pausing...' : '⏸️ Pause'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Force Controls */}
+                      {(getActiveCheckout(activeTimer) || getPausedCheckout(activeTimer)) && (
+                        <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Force Controls:</div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleForceActive(activeTimer)}
+                              disabled={forceActiveMutation.isPending}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                            >
+                              {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
+                            </button>
+                            <button
+                              onClick={() => handleForceExpired(activeTimer)}
+                              disabled={forceExpiredMutation.isPending}
+                              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                            >
+                              {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quick Time Adjustments */}
+                      {activeTimer.todayAllocation && activeTimer.todayAllocation.totalSeconds > activeTimer.todayAllocation.usedSeconds && (
+                        <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Adjust:</div>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, -10)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              -10m
+                            </button>
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, -5)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              -5m
+                            </button>
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, -1)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              -1m
+                            </button>
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, 1)}
+                              className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              +1m
+                            </button>
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, 5)}
+                              className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              +5m
+                            </button>
+                            <button
+                              onClick={() => handleAdjustTime(activeTimer, 10)}
+                              className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
+                              disabled={updateAllocationMutation.isPending}
+                            >
+                              +10m
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="space-y-2">
             {timers.map((timer) => (
               <div key={timer.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
@@ -810,68 +977,14 @@ export function AdminPanel() {
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {getActiveCheckout(timer) && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
                         Active
                       </span>
                     )}
                     {getPausedCheckout(timer) && (
-                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
                         Paused
                       </span>
-                    )}
-                    {canStartTimer(timer) && (
-                      <button
-                        onClick={() => handleStartTimer(timer)}
-                        disabled={createCheckoutMutation.isPending || startTimerMutation.isPending}
-                        className="px-3 py-1 text-green-600 hover:bg-green-50 rounded text-sm disabled:opacity-50"
-                      >
-                        {createCheckoutMutation.isPending || startTimerMutation.isPending ? 'Starting...' : 'Start'}
-                      </button>
-                    )}
-                    {canResumeTimer(timer) && (
-                      <button
-                        onClick={() => handleResumeTimer(timer)}
-                        disabled={startTimerMutation.isPending}
-                        className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm disabled:opacity-50"
-                      >
-                        {startTimerMutation.isPending ? 'Resuming...' : 'Resume'}
-                      </button>
-                    )}
-                    {canStopTimer(timer) && (
-                      <button
-                        onClick={() => handleStopTimer(timer)}
-                        disabled={stopTimerMutation.isPending}
-                        className="px-3 py-1 text-orange-600 hover:bg-orange-50 rounded text-sm disabled:opacity-50"
-                      >
-                        {stopTimerMutation.isPending ? 'Stopping...' : 'Stop'}
-                      </button>
-                    )}
-                    {getActiveCheckout(timer) && (
-                      <button
-                        onClick={() => handlePauseTimer(timer)}
-                        disabled={pauseTimerMutation.isPending}
-                        className="px-3 py-1 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 rounded text-sm disabled:opacity-50"
-                      >
-                        {pauseTimerMutation.isPending ? 'Pausing...' : 'Pause'}
-                      </button>
-                    )}
-                    {timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds && (
-                      <>
-                        <button
-                          onClick={() => handleForceActive(timer)}
-                          disabled={forceActiveMutation.isPending}
-                          className="px-3 py-1 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20 rounded text-sm disabled:opacity-50"
-                        >
-                          {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
-                        </button>
-                        <button
-                          onClick={() => handleForceExpired(timer)}
-                          disabled={forceExpiredMutation.isPending}
-                          className="px-3 py-1 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm disabled:opacity-50"
-                        >
-                          {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
-                        </button>
-                      </>
                     )}
                     <button
                       onClick={() => handleEditTimer(timer)}
@@ -887,54 +1000,6 @@ export function AdminPanel() {
                     </button>
                   </div>
                 </div>
-                
-                {timer.todayAllocation && (
-                  <div className="flex gap-1 pt-2 border-t border-gray-200">
-                    <span className="text-xs text-gray-500 self-center mr-2">Quick adjust:</span>
-                    <button
-                      onClick={() => handleAdjustTime(timer, -10)}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      -10m
-                    </button>
-                    <button
-                      onClick={() => handleAdjustTime(timer, -5)}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      -5m
-                    </button>
-                    <button
-                      onClick={() => handleAdjustTime(timer, -1)}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      -1m
-                    </button>
-                    <button
-                      onClick={() => handleAdjustTime(timer, 1)}
-                      className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      +1m
-                    </button>
-                    <button
-                      onClick={() => handleAdjustTime(timer, 5)}
-                      className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      +5m
-                    </button>
-                    <button
-                      onClick={() => handleAdjustTime(timer, 10)}
-                      className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                      disabled={updateAllocationMutation.isPending}
-                    >
-                      +10m
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
             {timers.length === 0 && (
