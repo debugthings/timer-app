@@ -236,8 +236,8 @@ export function TimerDetail() {
 
         {/* Checkout history */}
         {allocation && allocation.checkouts && allocation.checkouts.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Today's Checkout History</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Today's Checkout History</h3>
             <div className="space-y-2">
               {allocation.checkouts
                 .filter((c) => c.status === 'COMPLETED' || c.status === 'CANCELLED')
@@ -268,8 +268,8 @@ export function TimerDetail() {
         )}
 
         {/* Audit Logs */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Timer Activity</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Timer Activity</h3>
           {auditLogs.length > 0 ? (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {auditLogs.map((log: any) => {
@@ -300,20 +300,20 @@ export function TimerDetail() {
                 };
 
                 return (
-                  <div
-                    key={log.id}
-                    className="flex justify-between items-center p-3 bg-gray-50 rounded text-sm"
-                  >
+                <div
+                  key={log.id}
+                  className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded text-sm"
+                >
                     <div className="flex items-center flex-1">
                       <span className="mr-3 text-lg">{getActionIcon(log.action)}</span>
                       <div>
-                        <span className="font-medium">{getActionLabel(log.action)}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{getActionLabel(log.action)}</span>
                         {log.details && (
-                          <div className="text-xs text-gray-500 mt-1">{log.details}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{log.details}</div>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(log.createdAt).toLocaleString()}
                     </div>
                   </div>

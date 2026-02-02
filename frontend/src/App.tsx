@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { GlobalAlarmProvider } from './hooks/useGlobalAlarm';
 import { getSettings, verifyPin } from './services/api';
 import { PinModal } from './components/Admin/PinModal';
@@ -132,13 +133,15 @@ function AdminGuard({ children, requireAdmin }: AdminGuardProps) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AdminProvider>
-        <GlobalAlarmProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </GlobalAlarmProvider>
-      </AdminProvider>
+      <ThemeProvider>
+        <AdminProvider>
+          <GlobalAlarmProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </GlobalAlarmProvider>
+        </AdminProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

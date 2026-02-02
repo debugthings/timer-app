@@ -344,11 +344,11 @@ export function TimerCard({ timer }: TimerCardProps) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
-            <h3 className="text-xl font-bold">{timer.name}</h3>
-            <p className="text-gray-600 text-sm">{timer.person?.name}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{timer.name}</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">{timer.person?.name}</p>
             {scheduleSummary && (
               <p className="text-blue-600 text-xs mt-1">
                 Schedule: {scheduleSummary}
@@ -370,12 +370,12 @@ export function TimerCard({ timer }: TimerCardProps) {
               {showAlarmSelector && (
                 <div
                   ref={dropdownRef}
-                  className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
+                  className="absolute z-10 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
                   onClick={(e) => e.stopPropagation()}
                   role="listbox"
                   tabIndex={-1}
                 >
-                  <div className="text-xs text-gray-500 font-semibold mb-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-2">
                     Click to preview • Double-click to save:
                   </div>
                   {(Object.keys(ALARM_SOUND_LABELS) as AlarmSound[]).map((sound) => (
@@ -484,8 +484,8 @@ export function TimerCard({ timer }: TimerCardProps) {
         <div className="mb-3 space-y-2">
           {/* Daily progress bar */}
           <div>
-            {hasActiveCheckout && <div className="text-xs text-gray-500 mb-1">Daily Progress</div>}
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+            {hasActiveCheckout && <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Daily Progress</div>}
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -496,8 +496,8 @@ export function TimerCard({ timer }: TimerCardProps) {
           {/* Checkout progress bar (only when active) */}
           {hasActiveCheckout && activeCheckout && (
             <div>
-              <div className="text-xs text-gray-500 mb-1">Checkout Progress</div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Checkout Progress</div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-green-500 transition-all duration-300"
                   style={{ 
@@ -516,8 +516,8 @@ export function TimerCard({ timer }: TimerCardProps) {
               <div className="text-3xl font-bold text-blue-600 mb-1">
                 {formatTime(dailyRemainingSeconds)}
               </div>
-              <div className="text-sm text-gray-600">remaining today</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-sm text-gray-600 dark:text-gray-300">remaining today</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {formatTime(liveUsedSeconds)} used
               </div>
             </div>
@@ -525,15 +525,15 @@ export function TimerCard({ timer }: TimerCardProps) {
             <div className="space-y-3">
               {/* Daily allocation */}
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Daily Remaining:</span>
-                <span className="text-lg font-bold text-blue-600">{formatTime(dailyRemainingSeconds)}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Daily Remaining:</span>
+                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatTime(dailyRemainingSeconds)}</span>
               </div>
               {/* Active checkout */}
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Current Session:</span>
-                <span className="text-xl font-bold text-green-600">{formatTime(checkoutRemainingSeconds)}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Current Session:</span>
+                <span className="text-xl font-bold text-green-600 dark:text-green-400">{formatTime(checkoutRemainingSeconds)}</span>
               </div>
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 {formatTime(liveUsedSeconds)} used today
               </div>
             </div>
@@ -606,7 +606,7 @@ export function TimerCard({ timer }: TimerCardProps) {
             {/* Quick checkout buttons */}
             {!hasActiveCheckout && quickOptions.length > 0 && (
               <div>
-                <div className="text-sm text-gray-600 mb-2 font-medium">Quick Start:</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 mb-2 font-medium">Quick Start:</div>
                 <div className="grid grid-cols-3 gap-2">
                   {quickOptions.slice(0, 5).map((option) => (
                     <button
@@ -637,16 +637,16 @@ export function TimerCard({ timer }: TimerCardProps) {
             e.stopPropagation(); // Prevent card click
           }}
         >
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
             <div className="text-center">
               <div className="text-6xl mb-4">⏰</div>
               <h2 className="text-3xl font-bold text-red-600 mb-4">
                 {alarmState?.reason === 'completed' ? "Time's Up!" : 'Timer Expired'}
               </h2>
-              <p className="text-lg text-gray-700 mb-2 font-semibold">
+              <p className="text-lg text-gray-700 dark:text-gray-300 mb-2 font-semibold">
                 {alarmState?.timerName}
               </p>
-              <p className="text-md text-gray-600 mb-6">
+              <p className="text-md text-gray-600 dark:text-gray-400 mb-6">
                 {alarmState?.reason === 'completed'
                   ? `Checkout time has ended for ${alarmState?.personName || 'timer'}.`
                   : `This timer has expired for today and has been stopped.`
