@@ -882,17 +882,17 @@ export function AdminPanel() {
 
       {/* Settings Section */}
       <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4">Settings</h2>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Settings</h2>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Timezone
             </label>
             <div className="flex gap-2">
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="flex-1 px-3 py-2 border rounded-lg"
+                className="flex-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
                 <option value="UTC">UTC</option>
                 <option value="America/New_York">Eastern Time (ET)</option>
@@ -907,12 +907,12 @@ export function AdminPanel() {
               <button
                 onClick={handleUpdateTimezone}
                 disabled={updateSettingsMutation.isPending}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50"
               >
                 {updateSettingsMutation.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               This affects timer availability times and day calculations. Current: {settings?.timezone || 'UTC'}
             </p>
           </div>
