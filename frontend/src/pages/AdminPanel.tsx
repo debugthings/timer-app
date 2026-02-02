@@ -335,9 +335,9 @@ export function AdminPanel() {
     return !!getActiveCheckout(timer);
   };
 
-  // Find the currently active timer (one with active or paused checkout)
-  const getActiveTimer = () => {
-    return timers.find(timer => getActiveCheckout(timer) || getPausedCheckout(timer)) || null;
+  // Find the current day's timer (one with today's allocation)
+  const getCurrentDayTimer = () => {
+    return timers.find(timer => timer.todayAllocation) || null;
   };
 
   const handleStartTimer = async (timer: Timer) => {
@@ -780,41 +780,46 @@ export function AdminPanel() {
             </form>
           )}
 
-          {/* Active Timer Pane */}
+          {/* Current Day Timer Management */}
           {(() => {
-            const activeTimer = getActiveTimer();
-            if (activeTimer) {
+            const currentDayTimer = getCurrentDayTimer();
+            if (currentDayTimer) {
               return (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
                   <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center">
                     <span className="mr-2">🎯</span>
-                    Active Timer: {activeTimer.name}
+                    Manage Today's Timer: {currentDayTimer.name}
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Timer Info */}
                     <div>
                       <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                        <strong>Person:</strong> {activeTimer.person?.name}
+                        <strong>Person:</strong> {currentDayTimer.person?.name}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                         <strong>Status:</strong>{' '}
-                        {getActiveCheckout(activeTimer) && (
+                        {getActiveCheckout(currentDayTimer) && (
                           <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
                             Active
                           </span>
                         )}
-                        {getPausedCheckout(activeTimer) && (
+                        {getPausedCheckout(currentDayTimer) && (
                           <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
                             Paused
                           </span>
                         )}
+                        {!getActiveCheckout(currentDayTimer) && !getPausedCheckout(currentDayTimer) && (
+                          <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full">
+                            Ready
+                          </span>
+                        )}
                       </div>
-                      {activeTimer.todayAllocation && (
+                      {currentDayTimer.todayAllocation && (
                         <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                           <strong>Time Remaining:</strong>{' '}
-                          <span className={activeTimer.todayAllocation.totalSeconds - activeTimer.todayAllocation.usedSeconds > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
-                            {formatTime(activeTimer.todayAllocation.totalSeconds - activeTimer.todayAllocation.usedSeconds)} / {formatTime(activeTimer.todayAllocation.totalSeconds)}
+                          <span className={currentDayTimer.todayAllocation.totalSeconds - currentDayTimer.todayAllocation.usedSeconds > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
+                            {formatTime(currentDayTimer.todayAllocation.totalSeconds - currentDayTimer.todayAllocation.usedSeconds)} / {formatTime(currentDayTimer.todayAllocation.totalSeconds)}
                           </span>
                         </div>
                       )}
@@ -823,36 +828,36 @@ export function AdminPanel() {
                     {/* Controls */}
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-2">
-                        {canStartTimer(activeTimer) && (
+                        {canStartTimer(currentDayTimer) && (
                           <button
-                            onClick={() => handleStartTimer(activeTimer)}
+                            onClick={() => handleStartTimer(currentDayTimer)}
                             disabled={createCheckoutMutation.isPending || startTimerMutation.isPending}
                             className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 text-sm font-medium"
                           >
                             {createCheckoutMutation.isPending || startTimerMutation.isPending ? 'Starting...' : '▶️ Start'}
                           </button>
                         )}
-                        {canResumeTimer(activeTimer) && (
+                        {canResumeTimer(currentDayTimer) && (
                           <button
-                            onClick={() => handleResumeTimer(activeTimer)}
+                            onClick={() => handleResumeTimer(currentDayTimer)}
                             disabled={startTimerMutation.isPending}
                             className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
                           >
                             {startTimerMutation.isPending ? 'Resuming...' : '▶️ Resume'}
                           </button>
                         )}
-                        {canStopTimer(activeTimer) && (
+                        {canStopTimer(currentDayTimer) && (
                           <button
-                            onClick={() => handleStopTimer(activeTimer)}
+                            onClick={() => handleStopTimer(currentDayTimer)}
                             disabled={stopTimerMutation.isPending}
                             className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 text-sm font-medium"
                           >
                             {stopTimerMutation.isPending ? 'Stopping...' : '⏹️ Stop'}
                           </button>
                         )}
-                        {getActiveCheckout(activeTimer) && (
+                        {getActiveCheckout(currentDayTimer) && (
                           <button
-                            onClick={() => handlePauseTimer(activeTimer)}
+                            onClick={() => handlePauseTimer(currentDayTimer)}
                             disabled={pauseTimerMutation.isPending}
                             className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 text-sm font-medium"
                           >
@@ -862,19 +867,19 @@ export function AdminPanel() {
                       </div>
 
                       {/* Force Controls */}
-                      {(getActiveCheckout(activeTimer) || getPausedCheckout(activeTimer)) && (
+                      {currentDayTimer.todayAllocation && currentDayTimer.todayAllocation.totalSeconds > currentDayTimer.todayAllocation.usedSeconds && (
                         <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
                           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Force Controls:</div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleForceActive(activeTimer)}
+                              onClick={() => handleForceActive(currentDayTimer)}
                               disabled={forceActiveMutation.isPending}
                               className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
                             >
                               {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
                             </button>
                             <button
-                              onClick={() => handleForceExpired(activeTimer)}
+                              onClick={() => handleForceExpired(currentDayTimer)}
                               disabled={forceExpiredMutation.isPending}
                               className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
                             >
@@ -885,47 +890,47 @@ export function AdminPanel() {
                       )}
 
                       {/* Quick Time Adjustments */}
-                      {activeTimer.todayAllocation && activeTimer.todayAllocation.totalSeconds > activeTimer.todayAllocation.usedSeconds && (
+                      {currentDayTimer.todayAllocation && currentDayTimer.todayAllocation.totalSeconds > currentDayTimer.todayAllocation.usedSeconds && (
                         <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
                           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Adjust:</div>
                           <div className="flex flex-wrap gap-1">
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, -10)}
+                              onClick={() => handleAdjustTime(currentDayTimer, -10)}
                               className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
                               -10m
                             </button>
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, -5)}
+                              onClick={() => handleAdjustTime(currentDayTimer, -5)}
                               className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
                               -5m
                             </button>
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, -1)}
+                              onClick={() => handleAdjustTime(currentDayTimer, -1)}
                               className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
                               -1m
                             </button>
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, 1)}
+                              onClick={() => handleAdjustTime(currentDayTimer, 1)}
                               className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
                               +1m
                             </button>
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, 5)}
+                              onClick={() => handleAdjustTime(currentDayTimer, 5)}
                               className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
                               +5m
                             </button>
                             <button
-                              onClick={() => handleAdjustTime(activeTimer, 10)}
+                              onClick={() => handleAdjustTime(currentDayTimer, 10)}
                               className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 rounded"
                               disabled={updateAllocationMutation.isPending}
                             >
