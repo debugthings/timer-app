@@ -12,6 +12,10 @@ import {
   deletePerson,
   deleteTimer,
   updateSettings,
+  createCheckout,
+  startCheckout,
+  pauseCheckout,
+  stopCheckout,
 } from '../services/api';
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
@@ -128,6 +132,34 @@ export function AdminPanel() {
     mutationFn: updateSettings,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+
+  const createCheckoutMutation = useMutation({
+    mutationFn: createCheckout,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const startTimerMutation = useMutation({
+    mutationFn: (checkoutId: string) => startCheckout(checkoutId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const pauseTimerMutation = useMutation({
+    mutationFn: (checkoutId: string) => pauseCheckout(checkoutId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    },
+  });
+
+  const stopTimerMutation = useMutation({
+    mutationFn: (checkoutId: string) => stopCheckout(checkoutId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
     },
   });
 
@@ -262,6 +294,68 @@ export function AdminPanel() {
     setDeletingTimer(null);
   };
 
+  // Helper functions for timer control
+  const getActiveCheckout = (timer: Timer) => {
+    if (!timer.todayAllocation?.checkouts) return null;
+    return timer.todayAllocation.checkouts.find(c => c.status === 'ACTIVE') || null;
+  };
+
+  const getPausedCheckout = (timer: Timer) => {
+    if (!timer.todayAllocation?.checkouts) return null;
+    return timer.todayAllocation.checkouts.find(c => c.status === 'PAUSED') || null;
+  };
+
+  const canStartTimer = (timer: Timer) => {
+    if (!timer.todayAllocation) return false;
+    const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
+    return remainingSeconds > 0 && !getActiveCheckout(timer);
+  };
+
+  const canResumeTimer = (timer: Timer) => {
+    return !!getPausedCheckout(timer);
+  };
+
+  const canStopTimer = (timer: Timer) => {
+    return !!getActiveCheckout(timer);
+  };
+
+  const handleStartTimer = async (timer: Timer) => {
+    if (!timer.todayAllocation) return;
+
+    const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
+    if (remainingSeconds <= 0) return;
+
+    // Create a checkout for all remaining time
+    const checkout = await createCheckoutMutation.mutateAsync({
+      timerId: timer.id,
+      allocatedSeconds: remainingSeconds,
+    });
+
+    // Then start the checkout
+    await startTimerMutation.mutateAsync(checkout.id);
+  };
+
+  const handleStopTimer = async (timer: Timer) => {
+    const activeCheckout = getActiveCheckout(timer);
+    if (activeCheckout) {
+      await stopTimerMutation.mutateAsync(activeCheckout.id);
+    }
+  };
+
+  const handlePauseTimer = async (timer: Timer) => {
+    const activeCheckout = getActiveCheckout(timer);
+    if (activeCheckout) {
+      await pauseTimerMutation.mutateAsync(activeCheckout.id);
+    }
+  };
+
+  const handleResumeTimer = async (timer: Timer) => {
+    const pausedCheckout = getPausedCheckout(timer);
+    if (pausedCheckout) {
+      await startTimerMutation.mutateAsync(pausedCheckout.id);
+    }
+  };
+
   const handleEditTimer = (timer: Timer) => {
     // Convert seconds back to hours and minutes
     const hours = Math.floor(timer.defaultDailySeconds / 3600);
@@ -373,9 +467,9 @@ export function AdminPanel() {
         </div>
 
         {/* Timers Section */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Timers</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Timers</h2>
             <button
               onClick={() => {
                 setShowTimerForm(!showTimerForm);
@@ -391,7 +485,7 @@ export function AdminPanel() {
           </div>
 
           {showTimerForm && (
-            <form onSubmit={handleSubmitTimer} className="mb-4 p-4 bg-gray-50 rounded">
+            <form onSubmit={handleSubmitTimer} className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
               <input
                 type="text"
                 value={timerForm.name}
@@ -637,17 +731,23 @@ export function AdminPanel() {
 
           <div className="space-y-2">
             {timers.map((timer) => (
-              <div key={timer.id} className="p-3 bg-gray-50 rounded">
+              <div key={timer.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
                     <div className="font-medium">{timer.name}</div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       {timer.person?.name} • Default: {formatTime(timer.defaultDailySeconds)}
                       {(timer.defaultStartTime || timer.defaultExpirationTime) && (
                         <> • Window: {timer.defaultStartTime || '00:00'} - {timer.defaultExpirationTime || '23:59'}</>
                       )}
                       {timer.todayAllocation && (
-                        <> • Today: {formatTime(timer.todayAllocation.totalSeconds)}</>
+                        <>
+                          {' • Today: '}
+                          <span className={timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                            {formatTime(timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds)} remaining
+                          </span>
+                          {' / ' + formatTime(timer.todayAllocation.totalSeconds) + ' total'}
+                        </>
                       )}
                     </div>
                     {timer.schedules && timer.schedules.length > 0 && (
@@ -662,7 +762,53 @@ export function AdminPanel() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {getActiveCheckout(timer) && (
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                        Active
+                      </span>
+                    )}
+                    {getPausedCheckout(timer) && (
+                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                        Paused
+                      </span>
+                    )}
+                    {canStartTimer(timer) && (
+                      <button
+                        onClick={() => handleStartTimer(timer)}
+                        disabled={createCheckoutMutation.isPending || startTimerMutation.isPending}
+                        className="px-3 py-1 text-green-600 hover:bg-green-50 rounded text-sm disabled:opacity-50"
+                      >
+                        {createCheckoutMutation.isPending || startTimerMutation.isPending ? 'Starting...' : 'Start'}
+                      </button>
+                    )}
+                    {canResumeTimer(timer) && (
+                      <button
+                        onClick={() => handleResumeTimer(timer)}
+                        disabled={startTimerMutation.isPending}
+                        className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm disabled:opacity-50"
+                      >
+                        {startTimerMutation.isPending ? 'Resuming...' : 'Resume'}
+                      </button>
+                    )}
+                    {canStopTimer(timer) && (
+                      <button
+                        onClick={() => handleStopTimer(timer)}
+                        disabled={stopTimerMutation.isPending}
+                        className="px-3 py-1 text-orange-600 hover:bg-orange-50 rounded text-sm disabled:opacity-50"
+                      >
+                        {stopTimerMutation.isPending ? 'Stopping...' : 'Stop'}
+                      </button>
+                    )}
+                    {getActiveCheckout(timer) && (
+                      <button
+                        onClick={() => handlePauseTimer(timer)}
+                        disabled={pauseTimerMutation.isPending}
+                        className="px-3 py-1 text-purple-600 hover:bg-purple-50 rounded text-sm disabled:opacity-50"
+                      >
+                        {pauseTimerMutation.isPending ? 'Pausing...' : 'Pause'}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEditTimer(timer)}
                       className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm"
@@ -776,7 +922,7 @@ export function AdminPanel() {
       {/* Delete Confirmation Modal */}
       {deletingTimer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold mb-4">Delete Timer</h3>
             <p className="text-gray-700 mb-6">
               Are you sure you want to delete the timer "<strong>{deletingTimer.name}</strong>"? 
