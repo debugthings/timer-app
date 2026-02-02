@@ -5,6 +5,7 @@ export interface TimerAvailability {
   available: boolean;
   reason?: 'before_start' | 'after_expiration';
   expired: boolean; // Backward compatibility
+  forceExpired?: boolean; // Whether timer was forcibly expired by admin
 }
 
 export function useTimerAvailability(timerId: string | undefined): TimerAvailability {
@@ -24,6 +25,7 @@ export function useTimerAvailability(timerId: string | undefined): TimerAvailabi
           available: response.data.available ?? true,
           reason: response.data.reason,
           expired: response.data.expired ?? false,
+          forceExpired: response.data.forceExpired ?? false,
         });
       } catch (error) {
         console.error('Failed to check availability:', error);

@@ -656,11 +656,12 @@ router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
     let updatedCheckout;
     let additionalSeconds = 0;
 
+    const now = new Date();
+
     await prisma.$transaction(async (tx) => {
       // End any active time entry
       if (checkout.entries.length > 0) {
         const activeEntry = checkout.entries[0];
-        const now = new Date();
         const durationSeconds = Math.floor((now.getTime() - activeEntry.startTime.getTime()) / 1000);
 
         await tx.timeEntry.update({
@@ -694,6 +695,12 @@ router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
           entries: true,
           allocation: true,
         },
+      });
+
+      // Mark timer as forcibly expired
+      await tx.timer.update({
+        where: { id: checkout.timerId },
+        data: { forceExpiredAt: now },
       });
     });
 

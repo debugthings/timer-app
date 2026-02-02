@@ -466,20 +466,42 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
 // Check if timer is available (considering start and expiration times)
 router.get('/:id/expiration', async (req, res) => {
   const { id } = req.params;
-  
+
   try {
+    // First check if timer has been forcibly expired
+    const timer = await prisma.timer.findUnique({
+      where: { id },
+      select: { forceExpiredAt: true },
+    });
+
+    const isForceExpired = timer?.forceExpiredAt !== null;
+
+    if (isForceExpired) {
+      // Timer has been forcibly expired, force stop any active checkouts
+      await forceStopExpiredCheckouts(id);
+
+      res.json({
+        available: false,
+        reason: 'after_expiration',
+        expired: true,
+        forceExpired: true,
+      });
+      return;
+    }
+
     const availability = await getTimerAvailability(id);
-    
-    // If expired, force stop any active checkouts
+
+    // If naturally expired, force stop any active checkouts
     if (availability.reason === 'after_expiration') {
       await forceStopExpiredCheckouts(id);
     }
-    
-    res.json({ 
+
+    res.json({
       available: availability.available,
       reason: availability.reason,
       // Keep 'expired' for backward compatibility
-      expired: availability.reason === 'after_expiration'
+      expired: availability.reason === 'after_expiration',
+      forceExpired: false,
     });
   } catch (error) {
     console.error('Check expiration error:', error);
