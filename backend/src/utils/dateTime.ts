@@ -23,8 +23,13 @@ export async function getStartOfDay(date: Date = new Date()): Promise<Date> {
 // Get day of week in configured timezone
 export async function getDayOfWeek(date: Date): Promise<number> {
   const timezone = await getTimezone();
-  const localDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-  return localDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+
+  // Use the same logic as getStartOfDay to ensure consistency
+  const dateStr = date.toLocaleDateString('en-CA', { timeZone: timezone });
+  const [year, month, day] = dateStr.split('-');
+  const localMidnight = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0);
+
+  return localMidnight.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 }
 
 // Get current time in HH:MM format for configured timezone
