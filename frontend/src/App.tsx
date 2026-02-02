@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -23,6 +23,7 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const { isAdmin, setAdminPin } = useAdmin();
+  const navigate = useNavigate();
   const [showPinModal, setShowPinModal] = useState(false);
   const [hasPinConfigured, setHasPinConfigured] = useState<boolean | null>(null);
   const [pendingAdminAction, setPendingAdminAction] = useState<(() => void) | null>(null);
@@ -95,6 +96,7 @@ function AppContent() {
           setShowPinModal(false);
           setPendingAdminAction(null);
         }}
+        onCancel={() => navigate('/')}
         onSubmit={handlePinSubmit}
         title="Enter Admin PIN"
       />

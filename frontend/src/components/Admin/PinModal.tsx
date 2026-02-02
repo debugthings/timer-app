@@ -3,6 +3,7 @@ import { useState, FormEvent } from 'react';
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: () => void;
   onSubmit: (pin: string) => Promise<void>;
   title: string;
   isFirstTime?: boolean;
@@ -12,6 +13,7 @@ interface PinModalProps {
 export function PinModal({
   isOpen,
   onClose,
+  onCancel,
   onSubmit,
   title,
   isFirstTime = false,
@@ -67,7 +69,11 @@ export function PinModal({
     setNewPin('');
     setConfirmPin('');
     setError('');
-    onClose();
+    if (onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
   };
 
   const handleNumericInput = (value: string, setter: (value: string) => void) => {
@@ -85,7 +91,7 @@ export function PinModal({
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Current PIN</label>
               <input
-                type="tel"
+                type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={currentPin}
@@ -103,7 +109,7 @@ export function PinModal({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">New PIN (4+ digits)</label>
                 <input
-                  type="tel"
+                  type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={newPin}
@@ -118,7 +124,7 @@ export function PinModal({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Confirm PIN</label>
                 <input
-                  type="tel"
+                  type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={confirmPin}
@@ -134,7 +140,7 @@ export function PinModal({
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Enter Admin PIN</label>
               <input
-                type="tel"
+                type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={currentPin}
