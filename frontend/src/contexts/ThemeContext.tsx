@@ -33,19 +33,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Update localStorage
     localStorage.setItem('theme', theme);
 
-    // Update document class and CSS custom properties
-    const root = document.documentElement;
+    // Update document class and styles for dark mode
+    const html = document.documentElement;
 
     if (theme === 'dark') {
-      root.classList.add('dark');
-      root.style.setProperty('color-scheme', 'dark');
-      root.style.setProperty('color', 'rgba(255, 255, 255, 0.87)');
-      root.style.setProperty('background-color', '#1a1a1a');
+      html.classList.add('dark');
+      html.style.setProperty('color-scheme', 'dark');
+      html.style.setProperty('background-color', '#1a1a1a');
+      html.style.setProperty('color', 'rgba(255, 255, 255, 0.87)');
     } else {
-      root.classList.remove('dark');
-      root.style.setProperty('color-scheme', 'light');
-      root.style.setProperty('color', 'rgba(0, 0, 0, 0.87)');
-      root.style.setProperty('background-color', '#ffffff');
+      html.classList.remove('dark');
+      html.style.setProperty('color-scheme', 'light');
+      html.style.setProperty('background-color', '#ffffff');
+      html.style.setProperty('color', 'rgba(0, 0, 0, 0.87)');
     }
   }, [theme]);
 

@@ -14,14 +14,16 @@
 }
 
 /* Light mode (default) */
-:root {
+:root,
+html {
   color-scheme: light;
   color: rgba(0, 0, 0, 0.87);
   background-color: #ffffff;
 }
 
 /* Dark mode */
-.dark {
+.dark,
+.dark html {
   color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #1a1a1a;
@@ -31,10 +33,17 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: inherit;
+  color: inherit;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 #root {
   width: 100%;
+  min-height: 100vh;
+  background-color: inherit;
+  color: inherit;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 button {
@@ -55,6 +64,14 @@ select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #374151;
+  color: rgba(255, 255, 255, 0.87);
 }
 
 input[type="range"] {
