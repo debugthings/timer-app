@@ -36,6 +36,7 @@ export interface Timer {
   defaultStartTime?: string; // HH:MM format (24hr) - applies to all days unless schedule overrides
   defaultExpirationTime?: string; // HH:MM format (24hr) - applies to all days unless schedule overrides
   alarmSound: AlarmSound; // Alarm sound type
+  forceActiveAt?: string; // ISO date string when timer was forcibly activated by admin
   forceExpiredAt?: string; // ISO date string when timer was forcibly expired by admin
   schedules?: TimerSchedule[];
   todayAllocation?: DailyAllocation;

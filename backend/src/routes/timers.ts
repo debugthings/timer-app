@@ -468,14 +468,28 @@ router.get('/:id/expiration', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // First check if timer has been forcibly expired
+    // Check timer force flags
     const timer = await prisma.timer.findUnique({
       where: { id },
-      select: { forceExpiredAt: true },
+      select: { forceActiveAt: true, forceExpiredAt: true },
     });
 
+    const isForceActive = timer?.forceActiveAt !== null;
     const isForceExpired = timer?.forceExpiredAt !== null;
 
+    // Force active overrides everything - timer is always available
+    if (isForceActive) {
+      res.json({
+        available: true,
+        reason: undefined,
+        expired: false,
+        forceExpired: false,
+        forceActive: true,
+      });
+      return;
+    }
+
+    // Force expired makes timer unavailable
     if (isForceExpired) {
       // Timer has been forcibly expired, force stop any active checkouts
       await forceStopExpiredCheckouts(id);
@@ -485,10 +499,12 @@ router.get('/:id/expiration', async (req, res) => {
         reason: 'after_expiration',
         expired: true,
         forceExpired: true,
+        forceActive: false,
       });
       return;
     }
 
+    // No force flags set, check natural availability
     const availability = await getTimerAvailability(id);
 
     // If naturally expired, force stop any active checkouts
@@ -502,6 +518,7 @@ router.get('/:id/expiration', async (req, res) => {
       // Keep 'expired' for backward compatibility
       expired: availability.reason === 'after_expiration',
       forceExpired: false,
+      forceActive: false,
     });
   } catch (error) {
     console.error('Check expiration error:', error);
@@ -567,6 +584,72 @@ router.delete('/:id', requireAdminPin, async (req, res) => {
   } catch (error) {
     console.error('Delete timer error:', error);
     res.status(500).json({ error: 'Failed to delete timer' });
+  }
+});
+
+// Force timer to active state (admin only) - sets forceActiveAt flag
+router.post('/:id/force-active', requireAdminPin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const timer = await prisma.timer.update({
+      where: { id: id as string },
+      data: {
+        forceActiveAt: new Date(),
+        forceExpiredAt: null, // Clear force expired if it was set
+      },
+    });
+
+    // Log the force active action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: timer.id,
+          action: 'timer_force_active',
+          details: `Admin forced timer to active state`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log force active:', logError);
+    }
+
+    res.json(timer);
+  } catch (error) {
+    console.error('Force active timer error:', error);
+    res.status(500).json({ error: 'Failed to force timer active' });
+  }
+});
+
+// Force timer to expired state (admin only) - sets forceExpiredAt flag
+router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const timer = await prisma.timer.update({
+      where: { id: id as string },
+      data: {
+        forceExpiredAt: new Date(),
+        forceActiveAt: null, // Clear force active if it was set
+      },
+    });
+
+    // Log the force expired action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          timerId: timer.id,
+          action: 'timer_force_expired',
+          details: `Admin forced timer to expired state`,
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log force expired:', logError);
+    }
+
+    res.json(timer);
+  } catch (error) {
+    console.error('Force expired timer error:', error);
+    res.status(500).json({ error: 'Failed to force timer expired' });
   }
 });
 

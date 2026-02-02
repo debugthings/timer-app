@@ -16,8 +16,8 @@ import {
   startCheckout,
   pauseCheckout,
   stopCheckout,
-  forceCheckoutActive,
-  forceCheckoutExpired,
+  forceTimerActive,
+  forceTimerExpired,
 } from '../services/api';
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
@@ -166,14 +166,14 @@ export function AdminPanel() {
   });
 
   const forceActiveMutation = useMutation({
-    mutationFn: (checkoutId: string) => forceCheckoutActive(checkoutId),
+    mutationFn: (timerId: string) => forceTimerActive(timerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
     },
   });
 
   const forceExpiredMutation = useMutation({
-    mutationFn: (checkoutId: string) => forceCheckoutExpired(checkoutId),
+    mutationFn: (timerId: string) => forceTimerExpired(timerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
     },
@@ -335,9 +335,22 @@ export function AdminPanel() {
     return !!getActiveCheckout(timer);
   };
 
-  // Find the current day's timer (one with today's allocation)
-  const getCurrentDayTimer = () => {
-    return timers.find(timer => timer.todayAllocation) || null;
+  // Find all current day's timers (those with today's allocation)
+  const getCurrentDayTimers = () => {
+    return timers.filter(timer => timer.todayAllocation);
+  };
+
+  // Helper function to reset timer form to default state
+  const resetTimerForm = () => {
+    setTimerForm({ name: '', personId: '', hours: 2, minutes: 0 });
+    setDefaultStartTime('');
+    setDefaultExpirationTime('');
+    setUseSchedule(false);
+    setSchedules([]);
+    setSelectedDays(new Set());
+    setScheduleHours(1);
+    setScheduleMinutes(0);
+    setEditingTimer(null);
   };
 
   const handleStartTimer = async (timer: Timer) => {
@@ -378,33 +391,13 @@ export function AdminPanel() {
   };
 
   const handleForceActive = async (timer: Timer) => {
-    let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
-    if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
-      // Create a new checkout for remaining time
-      const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
-      checkout = await createCheckoutMutation.mutateAsync({
-        timerId: timer.id,
-        allocatedSeconds: remainingSeconds,
-      });
-    }
-    if (checkout) {
-      await forceActiveMutation.mutateAsync(checkout.id);
-    }
+    // Just set the forceActiveAt flag on the timer, don't manipulate checkouts
+    await forceActiveMutation.mutateAsync(timer.id);
   };
 
   const handleForceExpired = async (timer: Timer) => {
-    let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
-    if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
-      // Create a new checkout for remaining time
-      const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
-      checkout = await createCheckoutMutation.mutateAsync({
-        timerId: timer.id,
-        allocatedSeconds: remainingSeconds,
-      });
-    }
-    if (checkout) {
-      await forceExpiredMutation.mutateAsync(checkout.id);
-    }
+    // Just set the forceExpiredAt flag on the timer, don't manipulate checkouts
+    await forceExpiredMutation.mutateAsync(timer.id);
   };
 
   const handleEditTimer = (timer: Timer) => {
@@ -523,10 +516,14 @@ export function AdminPanel() {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Timers</h2>
             <button
               onClick={() => {
-                setShowTimerForm(!showTimerForm);
-                if (showTimerForm) {
+                if (!showTimerForm) {
+                  // Opening the form for new timer - reset all fields
+                  resetTimerForm();
+                } else {
+                  // Closing the form
                   setEditingTimer(null);
                 }
+                setShowTimerForm(!showTimerForm);
               }}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               disabled={people.length === 0}
@@ -781,15 +778,12 @@ export function AdminPanel() {
           )}
 
           {/* Current Day Timer Management */}
-          {(() => {
-            const currentDayTimer = getCurrentDayTimer();
-            if (currentDayTimer) {
-              return (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center">
-                    <span className="mr-2">🎯</span>
-                    Manage Today's Timer: {currentDayTimer.name}
-                  </h3>
+          {getCurrentDayTimers().map((currentDayTimer) => (
+            <div key={currentDayTimer.id} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center">
+                <span className="mr-2">🎯</span>
+                Manage Today's Timer: {currentDayTimer.name}
+              </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Timer Info */}
@@ -866,28 +860,26 @@ export function AdminPanel() {
                         )}
                       </div>
 
-                      {/* Force Controls */}
-                      {currentDayTimer.todayAllocation && currentDayTimer.todayAllocation.totalSeconds > currentDayTimer.todayAllocation.usedSeconds && (
-                        <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
-                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Force Controls:</div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleForceActive(currentDayTimer)}
-                              disabled={forceActiveMutation.isPending}
-                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-                            >
-                              {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
-                            </button>
-                            <button
-                              onClick={() => handleForceExpired(currentDayTimer)}
-                              disabled={forceExpiredMutation.isPending}
-                              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
-                            >
-                              {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
-                            </button>
-                          </div>
+                      {/* Force Controls - Always available for today's timer */}
+                      <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Force Controls:</div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleForceActive(currentDayTimer)}
+                            disabled={forceActiveMutation.isPending}
+                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                          >
+                            {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
+                          </button>
+                          <button
+                            onClick={() => handleForceExpired(currentDayTimer)}
+                            disabled={forceExpiredMutation.isPending}
+                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                          >
+                            {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
+                          </button>
                         </div>
-                      )}
+                      </div>
 
                       {/* Quick Time Adjustments */}
                       {currentDayTimer.todayAllocation && currentDayTimer.todayAllocation.totalSeconds > currentDayTimer.todayAllocation.usedSeconds && (
@@ -942,10 +934,7 @@ export function AdminPanel() {
                     </div>
                   </div>
                 </div>
-              );
-            }
-            return null;
-          })()}
+              ))}
 
           <div className="space-y-2">
             {timers.map((timer) => (

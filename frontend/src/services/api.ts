@@ -121,3 +121,10 @@ export const forceCheckoutActive = (id: string) =>
 
 export const forceCheckoutExpired = (id: string) =>
   api.post<any>(`/checkouts/${id}/force-expired`).then((r) => r.data);
+
+// Timer force state endpoints (sets flags only, doesn't manipulate checkouts)
+export const forceTimerActive = (timerId: string) =>
+  api.post<any>(`/timers/${timerId}/force-active`).then((r) => r.data);
+
+export const forceTimerExpired = (timerId: string) =>
+  api.post<any>(`/timers/${timerId}/force-expired`).then((r) => r.data);
