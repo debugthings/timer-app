@@ -388,17 +388,27 @@ export function AdminPanel() {
   };
 
   const handleForceExpired = async (timer: Timer) => {
-    let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
-    if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
-      // Create a new checkout for remaining time
-      const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
-      checkout = await createCheckoutMutation.mutateAsync({
-        timerId: timer.id,
-        allocatedSeconds: remainingSeconds,
-      });
-    }
-    if (checkout) {
-      await forceExpiredMutation.mutateAsync(checkout.id);
+    try {
+      let checkout = getActiveCheckout(timer) || getPausedCheckout(timer);
+      if (!checkout && timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds) {
+        // Create a new checkout for remaining time
+        const remainingSeconds = timer.todayAllocation.totalSeconds - timer.todayAllocation.usedSeconds;
+        console.log('Creating checkout for force expired:', timer.id, remainingSeconds);
+        checkout = await createCheckoutMutation.mutateAsync({
+          timerId: timer.id,
+          allocatedSeconds: remainingSeconds,
+        });
+        console.log('Created checkout:', checkout);
+      }
+      if (checkout) {
+        console.log('Forcing expired for checkout:', checkout.id);
+        await forceExpiredMutation.mutateAsync(checkout.id);
+        console.log('Force expired completed');
+      } else {
+        console.log('No checkout available for force expired');
+      }
+    } catch (error) {
+      console.error('Error in handleForceExpired:', error);
     }
   };
 
@@ -855,24 +865,28 @@ export function AdminPanel() {
                         {pauseTimerMutation.isPending ? 'Pausing...' : 'Pause'}
                       </button>
                     )}
-                    {timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds && (
-                      <>
-                        <button
-                          onClick={() => handleForceActive(timer)}
-                          disabled={forceActiveMutation.isPending}
-                          className="px-3 py-1 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20 rounded text-sm disabled:opacity-50"
-                        >
-                          {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
-                        </button>
-                        <button
-                          onClick={() => handleForceExpired(timer)}
-                          disabled={forceExpiredMutation.isPending}
-                          className="px-3 py-1 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm disabled:opacity-50"
-                        >
-                          {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
-                        </button>
-                      </>
-                    )}
+                    {(() => {
+                      const hasRemainingTime = timer.todayAllocation && timer.todayAllocation.totalSeconds > timer.todayAllocation.usedSeconds;
+                      console.log('Timer', timer.id, timer.name, 'has remaining time:', hasRemainingTime, 'allocation:', timer.todayAllocation);
+                      return hasRemainingTime && (
+                        <>
+                          <button
+                            onClick={() => handleForceActive(timer)}
+                            disabled={forceActiveMutation.isPending}
+                            className="px-3 py-1 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20 rounded text-sm disabled:opacity-50"
+                          >
+                            {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
+                          </button>
+                          <button
+                            onClick={() => handleForceExpired(timer)}
+                            disabled={forceExpiredMutation.isPending}
+                            className="px-3 py-1 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm disabled:opacity-50"
+                          >
+                            {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
+                          </button>
+                        </>
+                      );
+                    })()}
                     <button
                       onClick={() => handleEditTimer(timer)}
                       className="px-3 py-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded text-sm"
