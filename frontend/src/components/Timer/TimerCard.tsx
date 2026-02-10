@@ -381,7 +381,7 @@ export function TimerCard({ timer }: TimerCardProps) {
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{timer.name}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{timer.person?.name}</p>
             {scheduleSummary && (
-              <p className="text-blue-600 text-xs mt-1">
+              <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
                 Schedule: {scheduleSummary}
               </p>
             )}
@@ -392,7 +392,7 @@ export function TimerCard({ timer }: TimerCardProps) {
                   e.stopPropagation();
                   setShowAlarmSelector(!showAlarmSelector);
                 }}
-                className="text-xs text-gray-500 hover:text-gray-700 mt-1 flex items-center gap-1"
+                className="text-xs text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 mt-1 flex items-center gap-1"
                 aria-expanded={showAlarmSelector}
                 aria-haspopup="listbox"
               >
@@ -483,16 +483,16 @@ export function TimerCard({ timer }: TimerCardProps) {
           </div>
           {!isAvailable ? (
             availability.reason === 'before_start' ? (
-              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
+              <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-full text-sm font-medium">
                 Not Yet Available
               </span>
             ) : (
-              <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+              <span className="px-3 py-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 rounded-full text-sm font-medium">
                 Expired Today
               </span>
             )
           ) : hasActiveCheckout ? (
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded-full text-sm font-medium">
               Active
             </span>
           ) : null}
@@ -500,12 +500,12 @@ export function TimerCard({ timer }: TimerCardProps) {
 
         {/* Detailed availability message */}
         {!isAvailable && (
-          <div className="text-xs text-center mb-2 px-2 py-1 rounded bg-gray-50">
+          <div className="text-xs text-center mb-2 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
             {availability.reason === 'before_start'
               ? 'Timer will become available at its start time today'
               : 'Timer has reached its expiration time for today and will reset tomorrow'}
             {(timer.defaultStartTime || timer.defaultExpirationTime) && (
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                 Window: {timer.defaultStartTime || '00:00'} - {timer.defaultExpirationTime || '23:59'}
               </div>
             )}
@@ -515,7 +515,7 @@ export function TimerCard({ timer }: TimerCardProps) {
         <div className="mb-3 space-y-2">
           {/* Daily progress bar */}
           <div>
-            {hasActiveCheckout && <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Daily Progress</div>}
+            {hasActiveCheckout && <div className="text-xs text-gray-600 dark:text-gray-300 mb-1">Daily Progress</div>}
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 transition-all duration-300"
@@ -527,7 +527,7 @@ export function TimerCard({ timer }: TimerCardProps) {
           {/* Checkout progress bar (only when active) */}
           {hasActiveCheckout && activeCheckout && (
             <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Checkout Progress</div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 mb-1">Checkout Progress</div>
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-green-500 transition-all duration-300"
@@ -541,14 +541,14 @@ export function TimerCard({ timer }: TimerCardProps) {
         </div>
 
         {/* Time Display */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
           {!hasActiveCheckout ? (
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                 {formatTime(dailyRemainingSeconds)}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">remaining today</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <div className="text-sm text-gray-700 dark:text-gray-200">remaining today</div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                 {formatTime(liveUsedSeconds)} used
               </div>
             </div>
@@ -556,15 +556,15 @@ export function TimerCard({ timer }: TimerCardProps) {
             <div className="space-y-3">
               {/* Daily allocation */}
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Daily Remaining:</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Daily Remaining:</span>
                 <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatTime(dailyRemainingSeconds)}</span>
               </div>
               {/* Active checkout */}
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Current Session:</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Current Session:</span>
                 <span className="text-xl font-bold text-green-600 dark:text-green-400">{formatTime(checkoutRemainingSeconds)}</span>
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              <div className="text-xs text-gray-600 dark:text-gray-300 text-center">
                 {formatTime(liveUsedSeconds)} used today
               </div>
             </div>
@@ -637,7 +637,7 @@ export function TimerCard({ timer }: TimerCardProps) {
             {/* Quick checkout buttons */}
             {!hasActiveCheckout && quickOptions.length > 0 && (
               <div>
-                <div className="text-sm text-gray-600 dark:text-gray-300 mb-2 font-medium">Quick Start:</div>
+                <div className="text-sm text-gray-700 dark:text-gray-200 mb-2 font-medium">Quick Start:</div>
                 <div className="grid grid-cols-3 gap-2">
                   {quickOptions.slice(0, 5).map((option) => (
                     <button
