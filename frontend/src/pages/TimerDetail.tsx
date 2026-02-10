@@ -244,19 +244,22 @@ export function TimerDetail() {
                 .map((checkout) => (
                   <div
                     key={checkout.id}
-                    className="flex justify-between items-center p-3 bg-gray-50 rounded"
+                    className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded"
                   >
                     <div>
-                      <span className="font-medium">{formatTime(checkout.allocatedSeconds)}</span>
-                      <span className="text-gray-600 ml-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{formatTime(checkout.allocatedSeconds)}</span>
+                      <span className="text-gray-600 dark:text-gray-400 ml-2">
                         (used: {formatTime(checkout.usedSeconds)})
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-500 text-sm ml-2">
+                        {new Date(checkout.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
                     <span
                       className={`px-2 py-1 rounded text-sm ${
                         checkout.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-200 text-gray-700'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'
                       }`}
                     >
                       {checkout.status}

@@ -125,4 +125,25 @@ router.put('/settings', requireAdminPin, async (req, res) => {
   }
 });
 
+// Get all audit logs (requires admin PIN)
+router.get('/audit-logs', requireAdminPin, async (req, res) => {
+  const { limit = '50' } = req.query;
+
+  try {
+    const take = Math.min(parseInt(limit as string, 10) || 50, 200);
+    const logs = await prisma.auditLog.findMany({
+      include: {
+        timer: { select: { name: true, person: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ error: 'Failed to get audit logs' });
+  }
+});
+
 export default router;

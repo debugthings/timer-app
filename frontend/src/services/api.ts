@@ -44,6 +44,9 @@ export const setPin = (data: SetPinRequest) =>
 export const updateSettings = (data: { timezone?: string }) =>
   api.put<{ timezone: string }>('/admin/settings', data).then((r) => r.data);
 
+export const getAdminAuditLogs = (limit?: number) =>
+  api.get('/admin/audit-logs', { params: limit ? { limit } : {} }).then((r) => r.data);
+
 // People
 export const getPeople = () => api.get<Person[]>('/people').then((r) => r.data);
 

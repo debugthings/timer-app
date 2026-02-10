@@ -5,6 +5,7 @@ import {
   getSettings,
   getPeople,
   getTimers,
+  getAdminAuditLogs,
   createPerson,
   createTimer,
   updateTimer,
@@ -95,6 +96,12 @@ export function AdminPanel() {
   const { data: timers = [] } = useQuery({
     queryKey: ['timers'],
     queryFn: getTimers,
+  });
+
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['adminAuditLogs'],
+    queryFn: () => getAdminAuditLogs(50),
+    refetchInterval: 10000,
   });
 
   const createPersonMutation = useMutation({
@@ -864,20 +871,28 @@ export function AdminPanel() {
                       {/* Force Controls - Always available for today's timer */}
                       <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
                         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Force Controls:</div>
-                        <div className="flex gap-2">
+                        <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700">
                           <button
                             onClick={() => handleForceActive(currentDayTimer)}
                             disabled={forceActiveMutation.isPending}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                            className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                              currentDayTimer.forceActiveAt
+                                ? 'bg-green-600 text-white dark:bg-green-600'
+                                : 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
                           >
-                            {forceActiveMutation.isPending ? 'Forcing...' : 'Force Active'}
+                            Active
                           </button>
                           <button
                             onClick={() => handleForceExpired(currentDayTimer)}
                             disabled={forceExpiredMutation.isPending}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                            className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                              currentDayTimer.forceExpiredAt
+                                ? 'bg-red-600 text-white dark:bg-red-600'
+                                : 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
                           >
-                            {forceExpiredMutation.isPending ? 'Expiring...' : 'Force Expired'}
+                            Expired
                           </button>
                         </div>
                       </div>
@@ -1001,6 +1016,72 @@ export function AdminPanel() {
               <p className="text-gray-500 text-center py-4">No timers yet</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Audit Log Section */}
+      <div className="mt-8 max-w-7xl mx-auto px-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Audit Log</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Recent timer activity across all timers</p>
+          {auditLogs.length > 0 ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {auditLogs.map((log: { id: string; action: string; details?: string; createdAt: string; timer?: { name: string; person?: { name: string } } }) => {
+                const getActionIcon = (action: string) => {
+                  switch (action) {
+                    case 'checkout_start': return '▶️';
+                    case 'checkout_pause': return '⏸️';
+                    case 'checkout_stop': return '⏹️';
+                    case 'checkout_cancel': return '❌';
+                    case 'alarm_triggered': return '🔊';
+                    case 'alarm_acknowledged': return '✅';
+                    case 'alarm_preview': return '👁️';
+                    default: return '📝';
+                  }
+                };
+
+                const getActionLabel = (action: string) => {
+                  switch (action) {
+                    case 'checkout_start': return 'Started';
+                    case 'checkout_pause': return 'Paused';
+                    case 'checkout_stop': return 'Stopped';
+                    case 'checkout_cancel': return 'Cancelled';
+                    case 'alarm_triggered': return 'Alarm Triggered';
+                    case 'alarm_acknowledged': return 'Alarm Acknowledged';
+                    case 'alarm_preview': return 'Sound Previewed';
+                    default: return action.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+                  }
+                };
+
+                const timerLabel = log.timer
+                  ? `${log.timer.name}${log.timer.person ? ` (${log.timer.person.name})` : ''}`
+                  : 'Unknown timer';
+
+                return (
+                  <div
+                    key={log.id}
+                    className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded text-sm"
+                  >
+                    <div className="flex items-center flex-1">
+                      <span className="mr-3 text-lg">{getActionIcon(log.action)}</span>
+                      <div>
+                        <span className="font-medium text-gray-900 dark:text-white">{getActionLabel(log.action)}</span>
+                        <span className="text-gray-500 dark:text-gray-400 ml-2">— {timerLabel}</span>
+                        {log.details && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{log.details}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">No activity yet</div>
+          )}
         </div>
       </div>
 
