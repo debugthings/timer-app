@@ -38,11 +38,6 @@ router.get('/', async (req, res) => {
           },
           include: {
             checkouts: {
-              where: {
-                status: {
-                  in: ['ACTIVE', 'PAUSED'],
-                },
-              },
               include: {
                 entries: {
                   where: {
@@ -66,11 +61,6 @@ router.get('/', async (req, res) => {
             },
             include: {
               checkouts: {
-                where: {
-                  status: {
-                    in: ['ACTIVE', 'PAUSED'],
-                  },
-                },
                 include: {
                   entries: {
                     where: {
@@ -129,11 +119,6 @@ router.get('/:id', async (req, res) => {
       },
       include: {
         checkouts: {
-          where: {
-            status: {
-              in: ['ACTIVE', 'PAUSED'],
-            },
-          },
           include: {
             entries: {
               where: {
@@ -157,11 +142,6 @@ router.get('/:id', async (req, res) => {
         },
         include: {
           checkouts: {
-            where: {
-              status: {
-                in: ['ACTIVE', 'PAUSED'],
-              },
-            },
             include: {
               entries: {
                 where: {
@@ -198,7 +178,7 @@ router.get('/:id/allocation', async (req, res) => {
       return res.status(404).json({ error: 'Timer not found' });
     }
 
-    const targetDate = date ? await getStartOfDay(new Date(date as string)) : await getStartOfDay();
+    const targetDate = date ? new Date(date as string) : await getStartOfDay();
 
     let allocation = await prisma.dailyAllocation.findUnique({
       where: {
@@ -435,7 +415,7 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
       return res.status(404).json({ error: 'Timer not found' });
     }
 
-    const targetDate = date ? await getStartOfDay(new Date(date)) : await getStartOfDay();
+    const targetDate = date ? new Date(date) : await getStartOfDay();
 
     // Update or create allocation
     const allocation = await prisma.dailyAllocation.upsert({

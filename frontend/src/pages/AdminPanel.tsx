@@ -194,8 +194,8 @@ export function AdminPanel() {
   });
 
   const updateAllocationMutation = useMutation({
-    mutationFn: ({ timerId, totalSeconds }: { timerId: string; totalSeconds: number }) =>
-      updateAllocation(timerId, { totalSeconds }),
+    mutationFn: ({ timerId, totalSeconds, date }: { timerId: string; totalSeconds: number; date?: string }) =>
+      updateAllocation(timerId, { totalSeconds, ...(date && { date }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
     },
@@ -444,6 +444,7 @@ export function AdminPanel() {
     await updateAllocationMutation.mutateAsync({
       timerId: timer.id,
       totalSeconds: newTotal,
+      date: allocation.date,
     });
   };
 

@@ -20,16 +20,9 @@ export async function getStartOfDay(date: Date = new Date()): Promise<Date> {
   return utcMidnight;
 }
 
-// Get day of week in configured timezone
-export async function getDayOfWeek(date: Date): Promise<number> {
-  const timezone = await getTimezone();
-
-  // Use the same logic as getStartOfDay to ensure consistency
-  const dateStr = date.toLocaleDateString('en-CA', { timeZone: timezone });
-  const [year, month, day] = dateStr.split('-');
-  const localMidnight = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0);
-
-  return localMidnight.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+// Get day of week - dates are stored as UTC midnight for the calendar day
+export function getDayOfWeek(date: Date): number {
+  return date.getUTCDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 }
 
 // Get current time in HH:MM format for configured timezone
@@ -52,7 +45,7 @@ export async function getCurrentTime(): Promise<string> {
 
 // Get seconds allocation for a specific day based on timer schedule or default
 export async function getSecondsForDay(timerId: string, date: Date): Promise<number> {
-  const dayOfWeek = await getDayOfWeek(date);
+  const dayOfWeek = getDayOfWeek(date);
   
   // Check if there's a schedule for this day
   const schedule = await prisma.timerSchedule.findUnique({

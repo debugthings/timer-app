@@ -1,12 +1,13 @@
 import { prisma } from '../index';
-import { getDayOfWeek, getCurrentTime } from './dateTime';
+import { getDayOfWeek, getCurrentTime, getStartOfDay } from './dateTime';
 
 // Check if a timer is available based on start and expiration times
 export async function getTimerAvailability(timerId: string): Promise<{
   available: boolean;
   reason?: 'before_start' | 'after_expiration';
 }> {
-  const dayOfWeek = await getDayOfWeek(new Date());
+  const today = await getStartOfDay();
+  const dayOfWeek = getDayOfWeek(today);
   const currentTime = await getCurrentTime();
   
   // Get the timer with its schedule for today
