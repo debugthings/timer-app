@@ -120,29 +120,29 @@ export const ALARM_SOUND_LABELS: Record<AlarmSound, string> = {
   promethium: 'Promethium',
 };
 
-// Map alarm types to OGG files
+// Map alarm types to OGG files (removed duplicates point to kept file)
 const ALARM_SOUND_FILES: Record<AlarmSound, string> = {
   helium: '/media/alarms/Helium.ogg',
-  firedrill: '/media/alarms/FireDrill.ogg',
+  firedrill: '/media/alarms/Plutonium.ogg',   // dup removed, higher quality Plutonium kept
   cesium: '/media/alarms/Cesium.ogg',
   osmium: '/media/alarms/Osmium.ogg',
   plutonium: '/media/alarms/Plutonium.ogg',
   neon: '/media/alarms/Neon.ogg',
   argon: '/media/alarms/Argon.ogg',
-  krypton: '/media/alarms/Krypton.ogg',
-  oxygen: '/media/alarms/Oxygen.ogg',
+  krypton: '/media/alarms/Plutonium.ogg',     // dup removed, higher quality Plutonium kept
+  oxygen: '/media/alarms/Cesium.ogg',         // dup removed, metadata-only Cesium kept
   carbon: '/media/alarms/Carbon.ogg',
   analysis: '/media/alarms/Analysis.ogg',
   departure: '/media/alarms/Departure.ogg',
-  timing: '/media/alarms/Timing.ogg',
+  timing: '/media/alarms/Scandium.ogg',       // dup removed, higher quality Scandium kept
   scandium: '/media/alarms/Scandium.ogg',
-  barium: '/media/alarms/Barium.ogg',
+  barium: '/media/alarms/Analysis.ogg',       // dup removed, higher quality Analysis kept
   curium: '/media/alarms/Curium.ogg',
-  fermium: '/media/alarms/Fermium.ogg',
-  hassium: '/media/alarms/Hassium.ogg',
+  fermium: '/media/alarms/Argon.ogg',         // dup removed, metadata-only Argon kept
+  hassium: '/media/alarms/Helium.ogg',        // dup removed, metadata-only Helium kept
   copernicium: '/media/alarms/Copernicium.ogg',
-  nobelium: '/media/alarms/Nobelium.ogg',
-  neptunium: '/media/alarms/Neptunium.ogg',
+  nobelium: '/media/alarms/Neon.ogg',         // dup removed, metadata-only Neon kept
+  neptunium: '/media/alarms/Carbon.ogg',      // dup removed, metadata-only Carbon kept
   promethium: '/media/alarms/Promethium.ogg',
 };
 
