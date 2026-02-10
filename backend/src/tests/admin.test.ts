@@ -111,6 +111,42 @@ describe('Admin API', () => {
       expect(res.body).toHaveProperty('timezone', 'America/Los_Angeles');
     });
 
+    it('should persist timezone and return it on GET settings', async () => {
+      await setupAdmin('1234');
+      await testRequest
+        .put('/api/admin/settings')
+        .set('X-Admin-PIN', '1234')
+        .send({ timezone: 'America/Chicago' });
+
+      const res = await testRequest.get('/api/admin/settings');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('timezone', 'America/Chicago');
+    });
+
+    it('should support UTC timezone', async () => {
+      await setupAdmin('1234');
+      
+      const res = await testRequest
+        .put('/api/admin/settings')
+        .set('X-Admin-PIN', '1234')
+        .send({ timezone: 'UTC' });
+      
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('timezone', 'UTC');
+    });
+
+    it('should support Europe/London timezone', async () => {
+      await setupAdmin('1234');
+      
+      const res = await testRequest
+        .put('/api/admin/settings')
+        .set('X-Admin-PIN', '1234')
+        .send({ timezone: 'Europe/London' });
+      
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('timezone', 'Europe/London');
+    });
+
     it('should reject without admin PIN', async () => {
       await setupAdmin('1234');
       

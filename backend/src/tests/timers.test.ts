@@ -1,5 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { testRequest, setupAdmin, createTestPerson, createTestTimer, prisma } from './helpers';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  testRequest,
+  setupAdmin,
+  createTestPerson,
+  createTestTimer,
+  setTestTimezone,
+  setTestTime,
+  restoreTestTime,
+  MONDAY_FEB_9_2026,
+  SUNDAY_FEB_8_2026,
+  SATURDAY_FEB_7_2026,
+  prisma,
+} from './helpers';
 
 describe('Timers API', () => {
   let adminPin: string;
@@ -256,6 +268,130 @@ describe('Timers API', () => {
       
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('defaultStartTime', '07:00');
+    });
+  });
+
+  describe('Timezone and allocation', () => {
+    const scheduledTimerConfig = {
+      name: 'Scheduled Timer',
+      defaultDailySeconds: 3600,
+      schedules: [
+        { dayOfWeek: 0, seconds: 7200 }, // Sunday: 2h
+        { dayOfWeek: 1, seconds: 1800 }, // Monday: 30m
+      ],
+    };
+
+    describe('with explicit date param (?date=)', () => {
+      it('should use Monday schedule for Monday date (2026-02-09)', async () => {
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(
+          `/api/timers/${timer.id}/allocation?date=2026-02-09`
+        );
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('totalSeconds', 1800);
+        expect(res.body).toHaveProperty('date');
+      });
+
+      it('should use Sunday schedule for Sunday date (2026-02-08)', async () => {
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(
+          `/api/timers/${timer.id}/allocation?date=2026-02-08`
+        );
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('totalSeconds', 7200);
+      });
+
+      it('should use correct schedule with America/Los_Angeles timezone', async () => {
+        await setTestTimezone('America/Los_Angeles');
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(
+          `/api/timers/${timer.id}/allocation?date=2026-02-09`
+        );
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('totalSeconds', 1800);
+      });
+
+      it('should use correct schedule with UTC timezone', async () => {
+        await setTestTimezone('UTC');
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(
+          `/api/timers/${timer.id}/allocation?date=2026-02-09`
+        );
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('totalSeconds', 1800);
+      });
+
+      it('should use default when no schedule for day (Saturday 2026-02-07)', async () => {
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(
+          `/api/timers/${timer.id}/allocation?date=2026-02-07`
+        );
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('totalSeconds', 3600);
+      });
+    });
+
+    describe('with mocked time (today)', () => {
+      afterEach(() => {
+        restoreTestTime();
+      });
+
+      it('should use Monday schedule when today is Monday (GET /timers)', async () => {
+        setTestTime(MONDAY_FEB_9_2026);
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get('/api/timers');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(1);
+        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 1800);
+      });
+
+      it('should use Monday schedule when today is Monday (GET /timers/:id)', async () => {
+        setTestTime(MONDAY_FEB_9_2026);
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get(`/api/timers/${timer.id}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.todayAllocation).toHaveProperty('totalSeconds', 1800);
+      });
+
+      it('should use Sunday schedule when today is Sunday (GET /timers)', async () => {
+        setTestTime(SUNDAY_FEB_8_2026);
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get('/api/timers');
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 7200);
+      });
+
+      it('should use default when today is Saturday and no schedule (GET /timers)', async () => {
+        setTestTime(SATURDAY_FEB_7_2026);
+
+        const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
+
+        const res = await testRequest.get('/api/timers');
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 3600);
+      });
     });
   });
 });
