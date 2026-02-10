@@ -70,13 +70,19 @@ export async function playCompletionSound(): Promise<void> {
   }
 }
 
-// Alarm sound types - expanded to include more available OGG files
+// Alarm sound types - expanded to include more available OGG files + ringtones
 export type AlarmSound =
   | 'helium' | 'firedrill' | 'cesium' | 'osmium' | 'plutonium'
   | 'neon' | 'argon' | 'krypton' | 'oxygen' | 'carbon'
   | 'analysis' | 'departure' | 'timing' | 'scandium' | 'barium'
   | 'curium' | 'fermium' | 'hassium' | 'copernicium' | 'nobelium'
-  | 'neptunium' | 'promethium';
+  | 'neptunium' | 'promethium'
+  | 'acheron' | 'andromeda' | 'aquila' | 'argonavis' | 'atria' | 'bootes' | 'callisto'
+  | 'canismajor' | 'carina' | 'cassiopeia' | 'centaurus' | 'cygnus' | 'draco' | 'eridani'
+  | 'ganymede' | 'girtab' | 'hydra' | 'iridium' | 'kuma' | 'luna' | 'lyra' | 'machina'
+  | 'nasqueron' | 'oberon' | 'orion' | 'pegasus' | 'perseus' | 'phobos' | 'pyxis' | 'rasalas'
+  | 'rigel' | 'scarabaeus' | 'sceptrum' | 'solarium' | 'testudo' | 'themos' | 'titania'
+  | 'triton' | 'umbriel' | 'ursaminor' | 'vespa';
 
 // Backward compatibility mapping for database values
 const LEGACY_ALARM_SOUND_MAPPING: Record<string, AlarmSound> = {
@@ -118,6 +124,47 @@ export const ALARM_SOUND_LABELS: Record<AlarmSound, string> = {
   nobelium: 'Nobelium',
   neptunium: 'Neptunium',
   promethium: 'Promethium',
+  acheron: 'Acheron',
+  andromeda: 'Andromeda',
+  aquila: 'Aquila',
+  argonavis: 'ArgoNavis',
+  atria: 'Atria',
+  bootes: 'Bootes',
+  callisto: 'Callisto',
+  canismajor: 'CanisMajor',
+  carina: 'Carina',
+  cassiopeia: 'Cassiopeia',
+  centaurus: 'Centaurus',
+  cygnus: 'Cygnus',
+  draco: 'Draco',
+  eridani: 'Eridani',
+  ganymede: 'Ganymede',
+  girtab: 'Girtab',
+  hydra: 'Hydra',
+  iridium: 'Iridium',
+  kuma: 'Kuma',
+  luna: 'Luna',
+  lyra: 'Lyra',
+  machina: 'Machina',
+  nasqueron: 'Nasqueron',
+  oberon: 'Oberon',
+  orion: 'Orion',
+  pegasus: 'Pegasus',
+  perseus: 'Perseus',
+  phobos: 'Phobos',
+  pyxis: 'Pyxis',
+  rasalas: 'Rasalas',
+  rigel: 'Rigel',
+  scarabaeus: 'Scarabaeus',
+  sceptrum: 'Sceptrum',
+  solarium: 'Solarium',
+  testudo: 'Testudo',
+  themos: 'Themos',
+  titania: 'Titania',
+  triton: 'Triton',
+  umbriel: 'Umbriel',
+  ursaminor: 'UrsaMinor',
+  vespa: 'Vespa',
 };
 
 // Map alarm types to OGG files (removed duplicates point to kept file)
@@ -144,6 +191,47 @@ const ALARM_SOUND_FILES: Record<AlarmSound, string> = {
   nobelium: '/media/alarms/Neon.ogg',         // dup removed, metadata-only Neon kept
   neptunium: '/media/alarms/Carbon.ogg',      // dup removed, metadata-only Carbon kept
   promethium: '/media/alarms/Promethium.ogg',
+  acheron: '/media/sounds/ringtones/Acheron.ogg',
+  andromeda: '/media/sounds/ringtones/Andromeda.ogg',
+  aquila: '/media/sounds/ringtones/Aquila.ogg',
+  argonavis: '/media/sounds/ringtones/ArgoNavis.ogg',
+  atria: '/media/sounds/ringtones/Atria.ogg',
+  bootes: '/media/sounds/ringtones/Bootes.ogg',
+  callisto: '/media/sounds/ringtones/Callisto.ogg',
+  canismajor: '/media/sounds/ringtones/CanisMajor.ogg',
+  carina: '/media/sounds/ringtones/Carina.ogg',
+  cassiopeia: '/media/sounds/ringtones/Cassiopeia.ogg',
+  centaurus: '/media/sounds/ringtones/Centaurus.ogg',
+  cygnus: '/media/sounds/ringtones/Cygnus.ogg',
+  draco: '/media/sounds/ringtones/Draco.ogg',
+  eridani: '/media/sounds/ringtones/Eridani.ogg',
+  ganymede: '/media/sounds/ringtones/Ganymede.ogg',
+  girtab: '/media/sounds/ringtones/Girtab.ogg',
+  hydra: '/media/sounds/ringtones/Hydra.ogg',
+  iridium: '/media/sounds/ringtones/Iridium.ogg',
+  kuma: '/media/sounds/ringtones/Kuma.ogg',
+  luna: '/media/sounds/ringtones/Luna.ogg',
+  lyra: '/media/sounds/ringtones/Lyra.ogg',
+  machina: '/media/sounds/ringtones/Machina.ogg',
+  nasqueron: '/media/sounds/ringtones/Nasqueron.ogg',
+  oberon: '/media/sounds/ringtones/Oberon.ogg',
+  orion: '/media/sounds/ringtones/Orion.ogg',
+  pegasus: '/media/sounds/ringtones/Pegasus.ogg',
+  perseus: '/media/sounds/ringtones/Perseus.ogg',
+  phobos: '/media/sounds/ringtones/Phobos.ogg',
+  pyxis: '/media/sounds/ringtones/Pyxis.ogg',
+  rasalas: '/media/sounds/ringtones/Rasalas.ogg',
+  rigel: '/media/sounds/ringtones/Rigel.ogg',
+  scarabaeus: '/media/sounds/ringtones/Scarabaeus.ogg',
+  sceptrum: '/media/sounds/ringtones/Sceptrum.ogg',
+  solarium: '/media/sounds/ringtones/Solarium.ogg',
+  testudo: '/media/sounds/ringtones/Testudo.ogg',
+  themos: '/media/sounds/ringtones/Themos.ogg',
+  titania: '/media/sounds/ringtones/Titania.ogg',
+  triton: '/media/sounds/ringtones/Triton.ogg',
+  umbriel: '/media/sounds/ringtones/Umbriel.ogg',
+  ursaminor: '/media/sounds/ringtones/UrsaMinor.ogg',
+  vespa: '/media/sounds/ringtones/Vespa.ogg',
 };
 
 // Audio cache for loaded sounds
@@ -248,30 +336,21 @@ export function startContinuousAlarm(alarmType: AlarmSound = 'helium'): void {
   // Play immediately
   playAlarmBeep();
 
-  // Then repeat based on alarm type
+  // Then repeat based on alarm type (ringtones use 2500ms default)
   const intervals: Record<AlarmSound, number> = {
-    helium: 2000,     // 2 seconds - matches Helium.ogg length
-    firedrill: 1500,  // 1.5 seconds - matches FireDrill.ogg pattern
-    cesium: 2500,     // 2.5 seconds - matches Cesium.ogg length
-    osmium: 3000,     // 3 seconds - matches Osmium.ogg length
-    plutonium: 1800,  // 1.8 seconds - matches Plutonium.ogg pattern
-    neon: 2000,       // Default timing
-    argon: 2200,      // Slightly different timing
-    krypton: 2400,    // Varied timing
-    oxygen: 2100,     // Medium timing
-    carbon: 1900,     // Fast timing
-    analysis: 2300,   // Analytical timing
-    departure: 2500,  // Travel timing
-    timing: 2000,     // Clockwork timing
-    scandium: 2100,   // Unique timing
-    barium: 2400,     // Heavy timing
-    curium: 2600,     // Intense timing
-    fermium: 2200,    // Artificial timing
-    hassium: 2800,    // Powerful timing
-    copernicium: 2400,// Revolutionary timing
-    nobelium: 2300,   // Distinguished timing
-    neptunium: 2500,  // Planetary timing
-    promethium: 2200, // Gifted timing
+    helium: 2000, firedrill: 1500, cesium: 2500, osmium: 3000, plutonium: 1800,
+    neon: 2000, argon: 2200, krypton: 2400, oxygen: 2100, carbon: 1900,
+    analysis: 2300, departure: 2500, timing: 2000, scandium: 2100, barium: 2400,
+    curium: 2600, fermium: 2200, hassium: 2800, copernicium: 2400, nobelium: 2300,
+    neptunium: 2500, promethium: 2200,
+    acheron: 2500, andromeda: 2500, aquila: 2500, argonavis: 2500, atria: 2500,
+    bootes: 2500, callisto: 2500, canismajor: 2500, carina: 2500, cassiopeia: 2500,
+    centaurus: 2500, cygnus: 2500, draco: 2500, eridani: 2500, ganymede: 2500,
+    girtab: 2500, hydra: 2500, iridium: 2500, kuma: 2500, luna: 2500, lyra: 2500,
+    machina: 2500, nasqueron: 2500, oberon: 2500, orion: 2500, pegasus: 2500,
+    perseus: 2500, phobos: 2500, pyxis: 2500, rasalas: 2500, rigel: 2500,
+    scarabaeus: 2500, sceptrum: 2500, solarium: 2500, testudo: 2500, themos: 2500,
+    titania: 2500, triton: 2500, umbriel: 2500, ursaminor: 2500, vespa: 2500,
   };
 
   alarmInterval = window.setInterval(playAlarmBeep, intervals[currentAlarmType]);

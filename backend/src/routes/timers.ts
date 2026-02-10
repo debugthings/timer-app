@@ -6,6 +6,20 @@ import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
 
 const router = express.Router();
 
+const VALID_ALARM_SOUNDS = [
+  'helium', 'firedrill', 'cesium', 'osmium', 'plutonium',
+  'neon', 'argon', 'krypton', 'oxygen', 'carbon',
+  'analysis', 'departure', 'timing', 'scandium', 'barium',
+  'curium', 'fermium', 'hassium', 'copernicium', 'nobelium',
+  'neptunium', 'promethium',
+  'acheron', 'andromeda', 'aquila', 'argonavis', 'atria', 'bootes', 'callisto',
+  'canismajor', 'carina', 'cassiopeia', 'centaurus', 'cygnus', 'draco', 'eridani',
+  'ganymede', 'girtab', 'hydra', 'iridium', 'kuma', 'luna', 'lyra', 'machina',
+  'nasqueron', 'oberon', 'orion', 'pegasus', 'perseus', 'phobos', 'pyxis', 'rasalas',
+  'rigel', 'scarabaeus', 'sceptrum', 'solarium', 'testudo', 'themos', 'titania',
+  'triton', 'umbriel', 'ursaminor', 'vespa',
+] as const;
+
 // Get all timers
 router.get('/', async (req, res) => {
   try {
@@ -276,16 +290,9 @@ router.patch('/:id/alarm-sound', async (req, res) => {
   const { alarmSound } = req.body;
 
   // Validate alarm sound
-  const validAlarmSounds = [
-    'helium', 'firedrill', 'cesium', 'osmium', 'plutonium',
-    'neon', 'argon', 'krypton', 'oxygen', 'carbon',
-    'analysis', 'departure', 'timing', 'scandium', 'barium',
-    'curium', 'fermium', 'hassium', 'copernicium', 'nobelium',
-    'neptunium', 'promethium'
-  ];
-  if (!alarmSound || !validAlarmSounds.includes(alarmSound)) {
+  if (!alarmSound || !VALID_ALARM_SOUNDS.includes(alarmSound)) {
     return res.status(400).json({
-      error: 'Invalid alarm sound. Must be one of: ' + validAlarmSounds.join(', ')
+      error: 'Invalid alarm sound. Must be one of: ' + VALID_ALARM_SOUNDS.join(', ')
     });
   }
 
@@ -351,6 +358,11 @@ router.put('/:id', requireAdminPin, async (req, res) => {
   }
 
   if (alarmSound !== undefined) {
+    if (!VALID_ALARM_SOUNDS.includes(alarmSound)) {
+      return res.status(400).json({
+        error: 'Invalid alarm sound. Must be one of: ' + VALID_ALARM_SOUNDS.join(', ')
+      });
+    }
     updateData.alarmSound = alarmSound;
   }
 

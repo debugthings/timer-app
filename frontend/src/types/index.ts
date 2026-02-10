@@ -25,7 +25,13 @@ export type AlarmSound =
   | 'neon' | 'argon' | 'krypton' | 'oxygen' | 'carbon'
   | 'analysis' | 'departure' | 'timing' | 'scandium' | 'barium'
   | 'curium' | 'fermium' | 'hassium' | 'copernicium' | 'nobelium'
-  | 'neptunium' | 'promethium';
+  | 'neptunium' | 'promethium'
+  | 'acheron' | 'andromeda' | 'aquila' | 'argonavis' | 'atria' | 'bootes' | 'callisto'
+  | 'canismajor' | 'carina' | 'cassiopeia' | 'centaurus' | 'cygnus' | 'draco' | 'eridani'
+  | 'ganymede' | 'girtab' | 'hydra' | 'iridium' | 'kuma' | 'luna' | 'lyra' | 'machina'
+  | 'nasqueron' | 'oberon' | 'orion' | 'pegasus' | 'perseus' | 'phobos' | 'pyxis' | 'rasalas'
+  | 'rigel' | 'scarabaeus' | 'sceptrum' | 'solarium' | 'testudo' | 'themos' | 'titania'
+  | 'triton' | 'umbriel' | 'ursaminor' | 'vespa';
 
 export interface Timer {
   id: string;

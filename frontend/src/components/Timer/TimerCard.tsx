@@ -396,7 +396,7 @@ export function TimerCard({ timer }: TimerCardProps) {
                 aria-expanded={showAlarmSelector}
                 aria-haspopup="listbox"
               >
-                🔔 {ALARM_SOUND_LABELS[timer.alarmSound]}
+                🔔 {ALARM_SOUND_LABELS[normalizeAlarmSound(timer.alarmSound)]}
               </button>
               {showAlarmSelector && (
                 <div
@@ -424,13 +424,13 @@ export function TimerCard({ timer }: TimerCardProps) {
                           e.nativeEvent?.stopImmediatePropagation?.();
                           handleAlarmSoundChange(sound);
                         }}
-                        className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                          timer.alarmSound === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
+                        className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm ${
+                          normalizeAlarmSound(timer.alarmSound) === sound ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold' : ''
                         }`}
                         title="Click to preview • Double-click to save"
                       >
                         {ALARM_SOUND_LABELS[sound]}
-                        {timer.alarmSound === sound && (
+                        {normalizeAlarmSound(timer.alarmSound) === sound && (
                           <span className="ml-2 text-blue-600">✓</span>
                         )}
                       </button>
@@ -464,12 +464,12 @@ export function TimerCard({ timer }: TimerCardProps) {
                         handleAlarmSoundChange(sound);
                       }}
                       className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        timer.alarmSound === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
+                        normalizeAlarmSound(timer.alarmSound) === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
                       }`}
                       title="Click to preview • Double-click to save"
                     >
                       {ALARM_SOUND_LABELS[sound]}
-                      {timer.alarmSound === sound && (
+                      {normalizeAlarmSound(timer.alarmSound) === sound && (
                         <span className="ml-2 text-blue-600">✓</span>
                       )}
                     </button>
