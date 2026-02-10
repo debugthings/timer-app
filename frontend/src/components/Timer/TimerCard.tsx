@@ -401,7 +401,7 @@ export function TimerCard({ timer }: TimerCardProps) {
               {showAlarmSelector && (
                 <div
                   ref={dropdownRef}
-                  className="absolute z-10 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
+                  className="absolute z-10 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px] max-h-[280px] overflow-y-auto"
                   onClick={(e) => e.stopPropagation()}
                   role="listbox"
                   tabIndex={-1}
@@ -444,7 +444,7 @@ export function TimerCard({ timer }: TimerCardProps) {
             </div>
             {showAlarmSelector && (
               <div 
-                className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px]"
+                className="absolute z-10 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px] max-h-[280px] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-xs text-gray-500 font-semibold mb-2">
