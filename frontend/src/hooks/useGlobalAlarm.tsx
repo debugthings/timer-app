@@ -4,6 +4,7 @@ import { createAuditLog } from '../services/api';
 
 interface AlarmState {
   isActive: boolean;
+  timerId: string;
   timerName: string;
   personName?: string;
   reason: 'completed' | 'expired';
@@ -33,6 +34,7 @@ export function GlobalAlarmProvider({ children }: { children: ReactNode }) {
 
     setAlarmState({
       isActive: true,
+      timerId,
       timerName,
       personName,
       reason,

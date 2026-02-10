@@ -342,9 +342,40 @@ export function TimerCard({ timer }: TimerCardProps) {
     }
   };
 
+  const isThisTimerAlarming = alarmState?.isActive && alarmState?.timerId === timer.id;
+
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''}`}>
+        {isThisTimerAlarming && (
+          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⏰</span>
+                <div>
+                  <h3 className="font-bold text-red-700 dark:text-red-400">
+                    {alarmState?.reason === 'completed' ? "Time's Up!" : 'Timer Expired'}
+                  </h3>
+                  <p className="text-sm text-red-600 dark:text-red-300">
+                    {alarmState?.reason === 'completed'
+                      ? `Checkout time has ended for ${alarmState?.personName || 'timer'}.`
+                      : 'This timer has expired for today and has been stopped.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAcknowledgeAlarm();
+                }}
+                className="px-4 py-2 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shrink-0"
+              >
+                Acknowledge
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{timer.name}</h3>
@@ -628,43 +659,6 @@ export function TimerCard({ timer }: TimerCardProps) {
           </div>
         )}
       </div>
-      
-      {/* Alarm Acknowledgment Modal */}
-      {alarmState?.isActive && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            e.stopPropagation(); // Prevent card click
-          }}
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
-            <div className="text-center">
-              <div className="text-6xl mb-4">⏰</div>
-              <h2 className="text-3xl font-bold text-red-600 mb-4">
-                {alarmState?.reason === 'completed' ? "Time's Up!" : 'Timer Expired'}
-              </h2>
-              <p className="text-lg text-gray-700 dark:text-gray-300 mb-2 font-semibold">
-                {alarmState?.timerName}
-              </p>
-              <p className="text-md text-gray-600 dark:text-gray-400 mb-6">
-                {alarmState?.reason === 'completed'
-                  ? `Checkout time has ended for ${alarmState?.personName || 'timer'}.`
-                  : `This timer has expired for today and has been stopped.`
-                }
-              </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAcknowledgeAlarm();
-                }}
-                className="w-full px-6 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Acknowledge
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

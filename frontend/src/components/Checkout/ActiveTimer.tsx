@@ -142,9 +142,35 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   };
 
   const progressPercent = (elapsedSeconds / checkout.allocatedSeconds) * 100;
+  const isThisTimerAlarming = alarmState?.isActive && alarmState?.timerId === checkout.timerId;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className={`bg-white rounded-lg shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''}`}>
+      {isThisTimerAlarming && (
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⏰</span>
+              <div>
+                <h3 className="font-bold text-red-700 dark:text-red-400">
+                  {alarmState?.reason === 'expired' ? 'Timer Expired!' : "Time's Up!"}
+                </h3>
+                <p className="text-sm text-red-600 dark:text-red-300">
+                  {alarmState?.reason === 'expired'
+                    ? 'This timer has expired for today and has been stopped.'
+                    : `Checkout time has ended for ${alarmState?.personName || 'timer'}.`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleAcknowledgeAlarm}
+              className="px-4 py-2 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shrink-0"
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      )}
       <h3 className="text-lg font-semibold mb-4">Active Checkout</h3>
 
       {/* Progress bar */}
@@ -207,34 +233,6 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       {checkout.status === 'CANCELLED' && (
         <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-center">
           Checkout cancelled
-        </div>
-      )}
-
-      {/* Alarm Acknowledgment Modal */}
-      {alarmState?.isActive && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-pulse">
-            <div className="text-center">
-              <div className="text-6xl mb-4">⏰</div>
-              <h2 className="text-3xl font-bold text-red-600 mb-4">
-                {alarmState?.reason === 'expired' ? 'Timer Expired!' : 'Time\'s Up!'}
-              </h2>
-              <p className="text-lg text-gray-700 mb-2 font-semibold">
-                {alarmState?.timerName}
-              </p>
-              <p className="text-md text-gray-600 mb-6">
-                {alarmState?.reason === 'expired'
-                  ? `This timer has expired for today and has been stopped.`
-                  : `Checkout time has ended for ${alarmState?.personName || 'timer'}.`}
-              </p>
-              <button
-                onClick={handleAcknowledgeAlarm}
-                className="w-full px-6 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Acknowledge
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
