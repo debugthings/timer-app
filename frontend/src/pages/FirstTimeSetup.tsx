@@ -18,15 +18,15 @@ export function FirstTimeSetup({ onPinSet }: FirstTimeSetupProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="text-center max-w-md px-4">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Timer App</h1>
-        <p className="text-gray-600 mb-8">
+        <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Welcome to Timer App</h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-8">
           Set up your admin PIN to get started. You'll use this PIN to manage people, timers, and allocations.
         </p>
         <button
           onClick={() => setShowPinModal(true)}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 font-medium"
         >
           Set Admin PIN
         </button>

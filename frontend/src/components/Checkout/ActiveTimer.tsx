@@ -145,7 +145,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   const isThisTimerAlarming = alarmState?.isActive && alarmState?.timerId === checkout.timerId;
 
   return (
-    <div className={`bg-white rounded-lg shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''}`}>
       {isThisTimerAlarming && (
         <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
           <div className="flex items-center justify-between gap-4">
@@ -171,11 +171,11 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           </div>
         </div>
       )}
-      <h3 className="text-lg font-semibold mb-4">Active Checkout</h3>
+      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Active Checkout</h3>
 
       {/* Progress bar */}
       <div className="mb-4">
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
@@ -185,8 +185,8 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
 
       {/* Time display */}
       <div className="text-center mb-6">
-        <div className="text-5xl font-bold mb-2">{formatTime(remainingSeconds)}</div>
-        <div className="text-gray-600">
+        <div className="text-5xl font-bold mb-2 text-gray-900 dark:text-white">{formatTime(remainingSeconds)}</div>
+        <div className="text-gray-600 dark:text-gray-300">
           {formatTime(elapsedSeconds)} used of {formatTime(checkout.allocatedSeconds)}
         </div>
       </div>
@@ -197,7 +197,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           <button
             onClick={handleStart}
             disabled={loading || remainingSeconds <= 0}
-            className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium"
+            className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50 font-medium"
           >
             {loading ? 'Starting...' : 'Start'}
           </button>
@@ -207,7 +207,7 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           <button
             onClick={handlePause}
             disabled={loading}
-            className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium"
+            className="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 disabled:opacity-50 font-medium"
           >
             {loading ? 'Pausing...' : 'Pause'}
           </button>
@@ -225,13 +225,13 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
       </div>
 
       {checkout.status === 'COMPLETED' && (
-        <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg text-center">
+        <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200 rounded-lg text-center">
           Checkout completed
         </div>
       )}
 
       {checkout.status === 'CANCELLED' && (
-        <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-center">
+        <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-center">
           Checkout cancelled
         </div>
       )}

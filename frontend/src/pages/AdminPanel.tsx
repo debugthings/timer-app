@@ -23,6 +23,7 @@ import {
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
 import { Timer } from '../types';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function AdminPanel() {
   const queryClient = useQueryClient();
@@ -456,43 +457,46 @@ export function AdminPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <button
-            onClick={handleExitAdmin}
-            className="text-blue-500 hover:underline mb-2 inline-block"
-          >
-            ← Back to Dashboard
-          </button>
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <div className="mb-6 flex justify-between items-start">
+          <div>
+            <button
+              onClick={handleExitAdmin}
+              className="text-blue-500 dark:text-blue-400 hover:underline mb-2 inline-block"
+            >
+              ← Back to Dashboard
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
+          </div>
+          <ThemeToggle />
         </div>
 
         {/* People Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">People</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">People</h2>
             <button
               onClick={() => setShowPersonForm(!showPersonForm)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               {showPersonForm ? 'Cancel' : 'Add Person'}
             </button>
           </div>
 
           {showPersonForm && (
-            <form onSubmit={handleCreatePerson} className="mb-4 p-4 bg-gray-50 rounded">
+            <form onSubmit={handleCreatePerson} className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
               <input
                 type="text"
                 value={personName}
                 onChange={(e) => setPersonName(e.target.value)}
                 placeholder="Person name"
-                className="w-full px-3 py-2 border rounded-lg mb-3"
+                className="w-full px-3 py-2 border rounded-lg mb-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white dark:placeholder-gray-400"
                 required
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
                 disabled={createPersonMutation.isPending}
               >
                 {createPersonMutation.isPending ? 'Creating...' : 'Create Person'}
@@ -502,18 +506,18 @@ export function AdminPanel() {
 
           <div className="space-y-2">
             {people.map((person) => (
-              <div key={person.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                <span className="font-medium">{person.name}</span>
+              <div key={person.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                <span className="font-medium text-gray-900 dark:text-white">{person.name}</span>
                 <button
                   onClick={() => handleDeletePerson(person.id, person.name)}
-                  className="px-3 py-1 text-red-600 hover:bg-red-50 rounded"
+                  className="px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                 >
                   Delete
                 </button>
               </div>
             ))}
             {people.length === 0 && (
-              <p className="text-gray-500 text-center py-4">No people yet</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No people yet</p>
             )}
           </div>
         </div>
@@ -533,7 +537,7 @@ export function AdminPanel() {
                 }
                 setShowTimerForm(!showTimerForm);
               }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
               disabled={people.length === 0}
             >
               {showTimerForm ? 'Cancel' : 'Add Timer'}
@@ -547,13 +551,13 @@ export function AdminPanel() {
                 value={timerForm.name}
                 onChange={(e) => setTimerForm({ ...timerForm, name: e.target.value })}
                 placeholder="Timer name (e.g., Screen Time, Homework)"
-                className="w-full px-3 py-2 border rounded-lg mb-3"
+                className="w-full px-3 py-2 border rounded-lg mb-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white dark:placeholder-gray-400"
                 required
               />
               <select
                 value={timerForm.personId}
                 onChange={(e) => setTimerForm({ ...timerForm, personId: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg mb-3"
+                className="w-full px-3 py-2 border rounded-lg mb-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                 required
               >
                 <option value="">Select person</option>
@@ -564,13 +568,13 @@ export function AdminPanel() {
                 ))}
               </select>
               <div className="mb-3">
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">
                   Default Daily Time
-                  <span className="text-xs text-gray-500 ml-2">(used for days without a schedule)</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(used for days without a schedule)</span>
                 </label>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Hours</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Hours</label>
                     <input
                       type="number"
                       value={timerForm.hours}
@@ -578,11 +582,11 @@ export function AdminPanel() {
                         setTimerForm({ ...timerForm, hours: parseInt(e.target.value) || 0 })
                       }
                       min="0"
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Minutes</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Minutes</label>
                     <input
                       type="number"
                       value={timerForm.minutes}
@@ -591,7 +595,7 @@ export function AdminPanel() {
                       }
                       min="0"
                       max="59"
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                     />
                   </div>
                 </div>
@@ -599,42 +603,42 @@ export function AdminPanel() {
 
               {/* Default Start Time */}
               <div className="mb-3">
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
                   Default Start Time (optional)
-                  <span className="text-xs text-gray-500 ml-2">(applies to all days unless schedule overrides)</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(applies to all days unless schedule overrides)</span>
                 </label>
                 <input
                   type="time"
                   value={defaultStartTime}
                   onChange={(e) => setDefaultStartTime(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Timer becomes available at this time each day (24-hour format). Leave empty to start at midnight.
                 </p>
               </div>
 
               {/* Default Expiration Time */}
               <div className="mb-3">
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
                   Default Expiration Time (optional)
-                  <span className="text-xs text-gray-500 ml-2">(applies to all days unless schedule overrides)</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(applies to all days unless schedule overrides)</span>
                 </label>
                 <input
                   type="time"
                   value={defaultExpirationTime}
                   onChange={(e) => setDefaultExpirationTime(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Timer expires at this time each day (24-hour format). Leave empty for no expiration.
                 </p>
               </div>
 
               {/* Schedule Editor */}
-              <div className="mb-3 p-4 border rounded-lg bg-white">
+              <div className="mb-3 p-4 border rounded-lg bg-white dark:bg-gray-600 dark:border-gray-500">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium">Custom Weekly Schedule</label>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">Custom Weekly Schedule</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -644,7 +648,7 @@ export function AdminPanel() {
                         setSelectedDays(new Set());
                       }
                     }}
-                    className="text-sm text-blue-500 hover:underline"
+                    className="text-sm text-blue-500 dark:text-blue-400 hover:underline"
                   >
                     {useSchedule ? 'Use default time' : 'Set custom schedule'}
                   </button>
@@ -653,7 +657,7 @@ export function AdminPanel() {
                 {useSchedule && (
                   <div>
                     <div className="mb-3">
-                      <label className="block text-xs text-gray-600 mb-2">Select days:</label>
+                      <label className="block text-xs text-gray-600 dark:text-gray-300 mb-2">Select days:</label>
                       <div className="flex gap-2">
                         {[0, 1, 2, 3, 4, 5, 6].map((day) => (
                           <button
@@ -664,8 +668,8 @@ export function AdminPanel() {
                               selectedDays.has(day)
                                 ? 'bg-blue-500 text-white'
                                 : schedules.some(s => s.dayOfWeek === day)
-                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-200 border border-green-300 dark:border-green-700'
+                                : 'bg-gray-100 dark:bg-gray-500 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                             }`}
                           >
                             {getDayName(day)}
@@ -676,18 +680,18 @@ export function AdminPanel() {
 
                     <div className="flex gap-2 mb-3">
                       <div className="flex-1">
-                        <label className="block text-xs text-gray-600 mb-1">Hours</label>
+                        <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Hours</label>
                         <input
                           type="number"
                           value={scheduleHours}
                           onChange={(e) => setScheduleHours(parseInt(e.target.value) || 0)}
                           min="0"
                           placeholder="0"
-                          className="w-full px-3 py-2 border rounded-lg text-sm"
+                          className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white dark:placeholder-gray-400"
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs text-gray-600 mb-1">Minutes</label>
+                        <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Minutes</label>
                         <input
                           type="number"
                           value={scheduleMinutes}
@@ -695,37 +699,37 @@ export function AdminPanel() {
                           min="0"
                           max="59"
                           placeholder="0"
-                          className="w-full px-3 py-2 border rounded-lg text-sm"
+                          className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white dark:placeholder-gray-400"
                         />
                       </div>
                     </div>
 
                     <div className="mt-3">
-                      <label className="block text-xs text-gray-600 mb-1">
+                      <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                         Start Time (optional)
                       </label>
                       <input
                         type="time"
                         value={scheduleStartTime}
                         onChange={(e) => setScheduleStartTime(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Timer becomes available at this time (24-hour format). Leave empty to start at midnight.
                       </p>
                     </div>
 
                     <div className="mt-3">
-                      <label className="block text-xs text-gray-600 mb-1">
+                      <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                         Expiration Time (optional)
                       </label>
                       <input
                         type="time"
                         value={scheduleExpirationTime}
                         onChange={(e) => setScheduleExpirationTime(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Timer expires at this time (24-hour format). Leave empty for no expiration.
                       </p>
                     </div>
@@ -735,7 +739,7 @@ export function AdminPanel() {
                         type="button"
                         onClick={handleAddSchedule}
                         disabled={selectedDays.size === 0}
-                        className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       >
                         Set Time
                       </button>
@@ -743,24 +747,24 @@ export function AdminPanel() {
 
                     {schedules.length > 0 && (
                       <div className="text-xs">
-                        <div className="font-medium text-gray-700 mb-2">Weekly Schedule:</div>
+                        <div className="font-medium text-gray-700 dark:text-gray-200 mb-2">Weekly Schedule:</div>
                         <div className="flex flex-wrap gap-2">
                           {schedules.map((schedule) => (
                             <div
                               key={schedule.dayOfWeek}
-                              className="flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-200 rounded"
+                              className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded"
                             >
-                              <span className="font-medium">{getDayName(schedule.dayOfWeek)}:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{getDayName(schedule.dayOfWeek)}:</span>
                               <span>{formatTime(schedule.seconds)}</span>
                               {(schedule.startTime || schedule.expirationTime) && (
-                                <span className="text-xs text-blue-600">
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
                                   ({schedule.startTime || '00:00'} - {schedule.expirationTime || '23:59'})
                                 </span>
                               )}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveScheduleDay(schedule.dayOfWeek)}
-                                className="text-red-600 hover:text-red-800 ml-1"
+                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 ml-1"
                               >
                                 ×
                               </button>
@@ -957,7 +961,7 @@ export function AdminPanel() {
               <div key={timer.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
-                    <div className="font-medium">{timer.name}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{timer.name}</div>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
                       {timer.person?.name} • Default: {formatTime(timer.defaultDailySeconds)}
                       {(timer.defaultStartTime || timer.defaultExpirationTime) && (
@@ -974,7 +978,7 @@ export function AdminPanel() {
                       )}
                     </div>
                     {timer.schedules && timer.schedules.length > 0 && (
-                      <div className="text-xs text-blue-600 mt-1">
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                         Schedule: {timer.schedules.map(s => {
                           let timeWindow = '';
                           if (s.startTime || s.expirationTime) {
@@ -1013,7 +1017,7 @@ export function AdminPanel() {
               </div>
             ))}
             {timers.length === 0 && (
-              <p className="text-gray-500 text-center py-4">No timers yet</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No timers yet</p>
             )}
           </div>
         </div>
@@ -1023,7 +1027,7 @@ export function AdminPanel() {
       <div className="mt-8 max-w-7xl mx-auto px-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Audit Log</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Recent timer activity across all timers</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">Recent timer activity across all timers</p>
           {auditLogs.length > 0 ? (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {auditLogs.map((log: { id: string; action: string; details?: string; createdAt: string; timer?: { name: string; person?: { name: string } } }) => {
@@ -1066,13 +1070,13 @@ export function AdminPanel() {
                       <span className="mr-3 text-lg">{getActionIcon(log.action)}</span>
                       <div>
                         <span className="font-medium text-gray-900 dark:text-white">{getActionLabel(log.action)}</span>
-                        <span className="text-gray-500 dark:text-gray-400 ml-2">— {timerLabel}</span>
+                        <span className="text-gray-500 dark:text-gray-300 ml-2">— {timerLabel}</span>
                         {log.details && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{log.details}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">{log.details}</div>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-xs text-gray-500 dark:text-gray-300">
                       {new Date(log.createdAt).toLocaleString()}
                     </div>
                   </div>
@@ -1080,13 +1084,13 @@ export function AdminPanel() {
               })}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">No activity yet</div>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-300">No activity yet</div>
           )}
         </div>
       </div>
 
       {/* Settings Section */}
-      <div className="mt-8">
+      <div className="mt-8 max-w-7xl mx-auto px-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Settings</h2>
           <div className="mb-4">
@@ -1128,15 +1132,15 @@ export function AdminPanel() {
       {deletingTimer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4">Delete Timer</h3>
-            <p className="text-gray-700 mb-6">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Delete Timer</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
               Are you sure you want to delete the timer "<strong>{deletingTimer.name}</strong>"? 
               This action cannot be undone and will also delete all associated data.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={cancelDeleteTimer}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Cancel
               </button>

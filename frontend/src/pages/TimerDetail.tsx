@@ -5,6 +5,7 @@ import { getTimer, createCheckout, startCheckout, stopCheckout, getAuditLogs } f
 import { ActiveTimer } from '../components/Checkout/ActiveTimer';
 import { formatTime } from '../utils/time';
 import { useTimerAvailability } from '../hooks/useTimerExpiration';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function TimerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,16 +36,16 @@ export function TimerDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-xl text-gray-900 dark:text-white">Loading...</div>
       </div>
     );
   }
 
   if (!timer) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Timer not found</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-xl text-gray-900 dark:text-white">Timer not found</div>
       </div>
     );
   }
@@ -137,20 +138,23 @@ export function TimerDetail() {
     activeCheckout.allocatedSeconds >= (allocation.totalSeconds - allocation.usedSeconds - 60);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link to="/" className="text-blue-500 hover:underline mb-2 inline-block">
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold">{timer.name}</h1>
-          <p className="text-gray-600">{timer.person?.name}</p>
+        <div className="mb-6 flex justify-between items-start">
+          <div>
+            <Link to="/" className="text-blue-500 dark:text-blue-400 hover:underline mb-2 inline-block">
+              ← Back to Dashboard
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{timer.name}</h1>
+            <p className="text-gray-600 dark:text-gray-300">{timer.person?.name}</p>
+          </div>
+          <ThemeToggle />
         </div>
 
         {/* Availability warning */}
         {!isAvailable && (
-          <div className={`rounded-lg p-4 mb-6 ${availability.reason === 'before_start' ? 'bg-yellow-50 border border-yellow-200' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`font-medium ${availability.reason === 'before_start' ? 'text-yellow-800' : 'text-red-800'}`}>
+          <div className={`rounded-lg p-4 mb-6 ${availability.reason === 'before_start' ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'}`}>
+            <p className={`font-medium ${availability.reason === 'before_start' ? 'text-yellow-800 dark:text-yellow-200' : 'text-red-800 dark:text-red-200'}`}>
               {availability.reason === 'before_start' 
                 ? 'This timer is not yet available for today. Please check back later.'
                 : 'This timer has expired for today. It will become available again tomorrow.'}
@@ -159,22 +163,22 @@ export function TimerDetail() {
         )}
 
         {/* Today's allocation */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Today's Allocation</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Today's Allocation</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-sm text-gray-600">Total</div>
-              <div className="text-2xl font-bold">
+              <div className="text-sm text-gray-600 dark:text-gray-300">Total</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatTime(allocation?.totalSeconds || timer.defaultDailySeconds)}
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600">Used</div>
-              <div className="text-2xl font-bold">{formatTime(allocation?.usedSeconds || 0)}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Used</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatTime(allocation?.usedSeconds || 0)}</div>
             </div>
             <div className="col-span-2">
-              <div className="text-sm text-gray-600">Remaining</div>
-              <div className="text-3xl font-bold text-blue-500">{formatTime(remainingSeconds)}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Remaining</div>
+              <div className="text-3xl font-bold text-blue-500 dark:text-blue-400">{formatTime(remainingSeconds)}</div>
             </div>
           </div>
 
@@ -185,7 +189,7 @@ export function TimerDetail() {
               <button
                 onClick={handleGeneralStart}
                 disabled={loading || createCheckoutMutation.isPending}
-                className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium text-lg"
+                className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 font-medium text-lg"
               >
                 {loading ? 'Starting...' : 'Start'}
               </button>
@@ -193,14 +197,14 @@ export function TimerDetail() {
               {/* Quick Start Buttons */}
               {quickOptions.length > 0 && (
                 <div>
-                  <div className="text-sm text-gray-600 mb-2 font-medium">Quick Start:</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-2 font-medium">Quick Start:</div>
                   <div className="flex gap-2">
                     {quickOptions.map((option) => (
                       <button
                         key={option.label}
                         onClick={() => handleQuickCheckout(option.minutes)}
                         disabled={createCheckoutMutation.isPending}
-                        className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium text-lg"
+                        className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50 font-medium text-lg"
                       >
                         {option.label}
                       </button>
@@ -217,7 +221,7 @@ export function TimerDetail() {
               <button
                 onClick={handleStop}
                 disabled={loading}
-                className="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-medium text-lg"
+                className="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 font-medium text-lg"
               >
                 {loading ? 'Stopping...' : 'Stop'}
               </button>
@@ -251,7 +255,7 @@ export function TimerDetail() {
                       <span className="text-gray-600 dark:text-gray-400 ml-2">
                         (used: {formatTime(checkout.usedSeconds)})
                       </span>
-                      <span className="text-gray-500 dark:text-gray-500 text-sm ml-2">
+                      <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">
                         {new Date(checkout.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
@@ -324,7 +328,7 @@ export function TimerDetail() {
               })}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <div className="text-4xl mb-2">📊</div>
               <p>No timer activity yet</p>
               <p className="text-sm">Timer actions will appear here when you start, stop, or interact with timers</p>

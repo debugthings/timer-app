@@ -121,8 +121,8 @@ function AdminGuard({ children, requireAdmin }: AdminGuardProps) {
 
   if (!checked) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Checking permissions...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-xl text-gray-900 dark:text-white">Checking permissions...</div>
       </div>
     );
   }

@@ -15,7 +15,7 @@ export function AlarmBanner() {
       </div>
       <button
         onClick={acknowledgeAlarm}
-        className="px-4 py-2 bg-white text-red-600 font-bold rounded-lg hover:bg-red-50 transition-colors shrink-0"
+        className="px-4 py-2 bg-white dark:bg-gray-100 text-red-600 dark:text-red-700 font-bold rounded-lg hover:bg-red-50 dark:hover:bg-gray-200 transition-colors shrink-0"
       >
         Acknowledge
       </button>
