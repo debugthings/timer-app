@@ -214,6 +214,7 @@ export function AdminPanel() {
       updateTimer(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current'] });
       setTimerForm({ name: '', personId: '', hours: 2, minutes: 0 });
       setDefaultExpirationTime('');
       setShowTimerForm(false);
