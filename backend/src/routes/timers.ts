@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../index';
 import { requireAdminPin } from '../middleware/adminAuth';
 import { isTimerExpired, forceStopExpiredCheckouts, getTimerAvailability } from '../utils/timerExpiration';
+import { computeAllocationActive } from '../utils/allocationActivity';
 import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
 
 const router = express.Router();
@@ -20,7 +21,7 @@ const VALID_ALARM_SOUNDS = [
   'triton', 'umbriel', 'ursaminor', 'vespa',
 ] as const;
 
-// Get all timers
+// Get all timers (without allocations - cards fetch /current per timer)
 router.get('/', async (req, res) => {
   try {
     const timers = await prisma.timer.findMany({
@@ -37,67 +38,91 @@ router.get('/', async (req, res) => {
       },
     });
 
-    // Get today's date for allocations
-    const today = await getStartOfDay();
-
-    // Fetch or create today's allocation for each timer
-    const timersWithAllocations = await Promise.all(
-      timers.map(async (timer) => {
-        let allocation = await prisma.dailyAllocation.findUnique({
-          where: {
-            timerId_date: {
-              timerId: timer.id,
-              date: today,
-            },
-          },
-          include: {
-            checkouts: {
-              include: {
-                entries: {
-                  where: {
-                    endTime: null,
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!allocation) {
-          // Create allocation based on timer's schedule or default
-          const totalSeconds = await getSecondsForDay(timer.id, today);
-          allocation = await prisma.dailyAllocation.create({
-            data: {
-              timerId: timer.id,
-              date: today,
-              totalSeconds,
-              usedSeconds: 0,
-            },
-            include: {
-              checkouts: {
-                include: {
-                  entries: {
-                    where: {
-                      endTime: null,
-                    },
-                  },
-                },
-              },
-            },
-          });
-        }
-
-        return {
-          ...timer,
-          todayAllocation: allocation,
-        };
-      })
-    );
-
-    res.json(timersWithAllocations);
+    res.json(timers);
   } catch (error) {
     console.error('Get timers error:', error);
     res.status(500).json({ error: 'Failed to get timers' });
+  }
+});
+
+// Get current allocation for a timer (single source of truth for card state)
+router.get('/:id/current', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const timer = await prisma.timer.findUnique({
+      where: { id },
+      include: {
+        person: true,
+        schedules: {
+          orderBy: {
+            dayOfWeek: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!timer) {
+      return res.status(404).json({ error: 'Timer not found' });
+    }
+
+    const today = await getStartOfDay();
+    let allocation = await prisma.dailyAllocation.findUnique({
+      where: {
+        timerId_date: {
+          timerId: id,
+          date: today,
+        },
+      },
+      include: {
+        checkouts: {
+          include: {
+            entries: {
+              where: {
+                endTime: null,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!allocation) {
+      const totalSeconds = await getSecondsForDay(id, today);
+      allocation = await prisma.dailyAllocation.create({
+        data: {
+          timerId: id,
+          date: today,
+          totalSeconds,
+          usedSeconds: 0,
+        },
+        include: {
+          checkouts: {
+            include: {
+              entries: {
+                where: {
+                  endTime: null,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    const { active, reason } = await computeAllocationActive(allocation.id);
+
+    res.json({
+      timer,
+      allocation: {
+        ...allocation,
+        active,
+        reason,
+      },
+    });
+  } catch (error) {
+    console.error('Get timer current error:', error);
+    res.status(500).json({ error: 'Failed to get timer current' });
   }
 });
 
@@ -168,9 +193,15 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    const { active, reason } = await computeAllocationActive(allocation.id);
+
     res.json({
       ...timer,
-      todayAllocation: allocation,
+      todayAllocation: {
+        ...allocation,
+        active,
+        reason,
+      },
     });
   } catch (error) {
     console.error('Get timer error:', error);
@@ -455,69 +486,6 @@ router.put('/:id/allocation', requireAdminPin, async (req, res) => {
   }
 });
 
-// Check if timer is available (considering start and expiration times)
-router.get('/:id/expiration', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Check timer force flags
-    const timer = await prisma.timer.findUnique({
-      where: { id },
-      select: { forceActiveAt: true, forceExpiredAt: true },
-    });
-
-    const isForceActive = timer?.forceActiveAt !== null;
-    const isForceExpired = timer?.forceExpiredAt !== null;
-
-    // Force active overrides everything - timer is always available
-    if (isForceActive) {
-      res.json({
-        available: true,
-        reason: undefined,
-        expired: false,
-        forceExpired: false,
-        forceActive: true,
-      });
-      return;
-    }
-
-    // Force expired makes timer unavailable
-    if (isForceExpired) {
-      // Timer has been forcibly expired, force stop any active checkouts
-      await forceStopExpiredCheckouts(id);
-
-      res.json({
-        available: false,
-        reason: 'after_expiration',
-        expired: true,
-        forceExpired: true,
-        forceActive: false,
-      });
-      return;
-    }
-
-    // No force flags set, check natural availability
-    const availability = await getTimerAvailability(id);
-
-    // If naturally expired, force stop any active checkouts
-    if (availability.reason === 'after_expiration') {
-      await forceStopExpiredCheckouts(id);
-    }
-
-    res.json({
-      available: availability.available,
-      reason: availability.reason,
-      // Keep 'expired' for backward compatibility
-      expired: availability.reason === 'after_expiration',
-      forceExpired: false,
-      forceActive: false,
-    });
-  } catch (error) {
-    console.error('Check expiration error:', error);
-    res.status(500).json({ error: 'Failed to check expiration' });
-  }
-});
-
 // Get audit logs for a timer
 router.get('/:id/audit-logs', async (req, res) => {
   const { id } = req.params;
@@ -576,72 +544,6 @@ router.delete('/:id', requireAdminPin, async (req, res) => {
   } catch (error) {
     console.error('Delete timer error:', error);
     res.status(500).json({ error: 'Failed to delete timer' });
-  }
-});
-
-// Force timer to active state (admin only) - sets forceActiveAt flag
-router.post('/:id/force-active', requireAdminPin, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const timer = await prisma.timer.update({
-      where: { id: id as string },
-      data: {
-        forceActiveAt: new Date(),
-        forceExpiredAt: null, // Clear force expired if it was set
-      },
-    });
-
-    // Log the force active action
-    try {
-      await prisma.auditLog.create({
-        data: {
-          timerId: timer.id,
-          action: 'timer_force_active',
-          details: `Admin forced timer to active state`,
-        },
-      });
-    } catch (logError) {
-      console.error('Failed to log force active:', logError);
-    }
-
-    res.json(timer);
-  } catch (error) {
-    console.error('Force active timer error:', error);
-    res.status(500).json({ error: 'Failed to force timer active' });
-  }
-});
-
-// Force timer to expired state (admin only) - sets forceExpiredAt flag
-router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const timer = await prisma.timer.update({
-      where: { id: id as string },
-      data: {
-        forceExpiredAt: new Date(),
-        forceActiveAt: null, // Clear force active if it was set
-      },
-    });
-
-    // Log the force expired action
-    try {
-      await prisma.auditLog.create({
-        data: {
-          timerId: timer.id,
-          action: 'timer_force_expired',
-          details: `Admin forced timer to expired state`,
-        },
-      });
-    } catch (logError) {
-      console.error('Failed to log force expired:', logError);
-    }
-
-    res.json(timer);
-  } catch (error) {
-    console.error('Force expired timer error:', error);
-    res.status(500).json({ error: 'Failed to force timer expired' });
   }
 });
 

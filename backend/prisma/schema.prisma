@@ -34,12 +34,10 @@ model Timer {
   defaultStartTime      String? // Default start time for all days (HH:MM format in 24hr)
   defaultExpirationTime String? // Default expiration time for all days (HH:MM format in 24hr)
   alarmSound            String            @default("classic") // Alarm sound type: classic, urgent, chime, bell, buzz
-  forceActiveAt         DateTime? // When timer was forcibly activated by admin (null = not forced active)
-  forceExpiredAt        DateTime? // When timer was forcibly expired by admin (null = not forced expired)
   schedules             TimerSchedule[]
   allocations           DailyAllocation[]
   checkouts             Checkout[]
-  auditLogs            AuditLog[]
+  auditLogs             AuditLog[]
   createdAt             DateTime          @default(now())
 }
 
@@ -57,14 +55,15 @@ model TimerSchedule {
 }
 
 model DailyAllocation {
-  id           String     @id @default(uuid())
-  timer        Timer      @relation(fields: [timerId], references: [id], onDelete: Cascade)
-  timerId      String
-  date         DateTime // Date for this allocation (stored as start of day)
-  totalSeconds Int // Total seconds allocated for this day
-  usedSeconds  Int        @default(0) // Seconds used so far
-  checkouts    Checkout[]
-  createdAt    DateTime   @default(now())
+  id              String     @id @default(uuid())
+  timer           Timer      @relation(fields: [timerId], references: [id], onDelete: Cascade)
+  timerId         String
+  date            DateTime // Date for this allocation (stored as start of day)
+  totalSeconds    Int // Total seconds allocated for this day
+  usedSeconds     Int        @default(0) // Seconds used so far
+  manualOverride  String? // 'active' | 'expired' | null (null = compute from time)
+  checkouts       Checkout[]
+  createdAt       DateTime   @default(now())
 
   @@unique([timerId, date])
 }

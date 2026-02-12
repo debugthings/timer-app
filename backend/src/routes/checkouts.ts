@@ -697,10 +697,10 @@ router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
         },
       });
 
-      // Mark timer as forcibly expired
-      await tx.timer.update({
-        where: { id: checkout.timerId },
-        data: { forceExpiredAt: now },
+      // Mark allocation as forcibly expired
+      await tx.dailyAllocation.update({
+        where: { id: checkout.allocationId },
+        data: { manualOverride: 'expired' },
       });
     });
 

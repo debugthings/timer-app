@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimer, createCheckout, startCheckout, stopCheckout, getAuditLogs } from '../services/api';
+import { getTimerCurrent, createCheckout, startCheckout, stopCheckout, getAuditLogs } from '../services/api';
 import { ActiveTimer } from '../components/Checkout/ActiveTimer';
 import { formatTime } from '../utils/time';
-import { useTimerAvailability } from '../hooks/useTimerExpiration';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 export function TimerDetail() {
@@ -12,14 +11,16 @@ export function TimerDetail() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
-  const availability = useTimerAvailability(id);
-  const isAvailable = availability.available;
 
-  const { data: timer, isLoading } = useQuery({
-    queryKey: ['timer', id],
-    queryFn: () => getTimer(id!),
-    refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
+  const { data: currentData, isLoading } = useQuery({
+    queryKey: ['timer-current', id],
+    queryFn: () => getTimerCurrent(id!),
+    refetchInterval: 5000,
   });
+
+  const timer = currentData?.timer;
+  const allocation = currentData?.allocation;
+  const isAvailable = allocation?.active ?? true;
 
   const { data: auditLogs = [] } = useQuery({
     queryKey: ['auditLogs', id],
@@ -30,7 +31,7 @@ export function TimerDetail() {
   const createCheckoutMutation = useMutation({
     mutationFn: createCheckout,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['timer', id] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current', id] });
     },
   });
 
@@ -50,7 +51,6 @@ export function TimerDetail() {
     );
   }
 
-  const allocation = timer.todayAllocation;
   const remainingSeconds = allocation
     ? allocation.totalSeconds - allocation.usedSeconds
     : timer.defaultDailySeconds;
@@ -72,7 +72,7 @@ export function TimerDetail() {
         allocatedSeconds: remainingSeconds,
       });
       await startCheckout(result.id);
-      queryClient.invalidateQueries({ queryKey: ['timer', id] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current', id] });
     } catch (error) {
       console.error('Failed to start timer:', error);
     } finally {
@@ -94,7 +94,7 @@ export function TimerDetail() {
       });
       // Automatically start the checkout after creating it
       await startCheckout(result.id);
-      queryClient.invalidateQueries({ queryKey: ['timer', id] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current', id] });
     } catch (error) {
       console.error('Failed to create checkout:', error);
     } finally {
@@ -112,7 +112,7 @@ export function TimerDetail() {
     
     try {
       await stopCheckout(activeCheckout.id);
-      queryClient.invalidateQueries({ queryKey: ['timer', id] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current', id] });
     } catch (error) {
       console.error('Failed to stop timer:', error);
     } finally {
@@ -153,9 +153,9 @@ export function TimerDetail() {
 
         {/* Availability warning */}
         {!isAvailable && (
-          <div className={`rounded-lg p-4 mb-6 ${availability.reason === 'before_start' ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'}`}>
-            <p className={`font-medium ${availability.reason === 'before_start' ? 'text-yellow-800 dark:text-yellow-200' : 'text-red-800 dark:text-red-200'}`}>
-              {availability.reason === 'before_start' 
+          <div className={`rounded-lg p-4 mb-6 ${allocation?.reason === 'before_start' ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'}`}>
+            <p className={`font-medium ${allocation?.reason === 'before_start' ? 'text-yellow-800 dark:text-yellow-200' : 'text-red-800 dark:text-red-200'}`}>
+              {allocation?.reason === 'before_start' 
                 ? 'This timer is not yet available for today. Please check back later.'
                 : 'This timer has expired for today. It will become available again tomorrow.'}
             </p>

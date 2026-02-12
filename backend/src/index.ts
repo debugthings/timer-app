@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import adminRoutes from './routes/admin';
 import peopleRoutes from './routes/people';
 import timerRoutes from './routes/timers';
+import allocationRoutes from './routes/allocations';
 import checkoutRoutes from './routes/checkouts';
 import soundsRoutes from './routes/sounds';
 
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use('/api/admin', adminRoutes);
 app.use('/api/people', peopleRoutes);
 app.use('/api/timers', timerRoutes);
+app.use('/api/allocations', allocationRoutes);
 app.use('/api/checkouts', checkoutRoutes);
 app.use('/api/sounds', soundsRoutes); // Public endpoint for alarm sounds
 

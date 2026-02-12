@@ -1,7 +1,7 @@
 import { prisma } from '../index';
 import { getDayOfWeek, getCurrentTime, getStartOfDay } from './dateTime';
 
-// Check if a timer is available based on start and expiration times
+// Check if a timer is available based on start and expiration times (timezone-aware)
 export async function getTimerAvailability(timerId: string): Promise<{
   available: boolean;
   reason?: 'before_start' | 'after_expiration';

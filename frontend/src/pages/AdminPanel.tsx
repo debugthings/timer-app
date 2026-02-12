@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import {
   getSettings,
   getPeople,
   getTimers,
+  getTimerCurrent,
   getAdminAuditLogs,
   createPerson,
   createTimer,
@@ -17,8 +18,8 @@ import {
   startCheckout,
   pauseCheckout,
   stopCheckout,
-  forceTimerActive,
-  forceTimerExpired,
+  forceAllocationActive,
+  forceAllocationExpired,
 } from '../services/api';
 import { formatTime, hoursToSeconds } from '../utils/time';
 import { useAdmin } from '../contexts/AdminContext';
@@ -99,6 +100,25 @@ export function AdminPanel() {
     queryFn: getTimers,
   });
 
+  // Fetch /current for each timer to get allocation with manualOverride
+  const currentQueries = useQueries({
+    queries: timers.map((t) => ({
+      queryKey: ['timer-current', t.id],
+      queryFn: () => getTimerCurrent(t.id),
+    })),
+  });
+
+  // Merge timers with their current allocation data
+  const timersWithCurrent = timers.map((timer, i) => {
+    const currentData = currentQueries[i]?.data;
+    if (!currentData) return { ...timer, todayAllocation: undefined };
+    return {
+      ...timer,
+      ...currentData.timer,
+      todayAllocation: currentData.allocation,
+    };
+  });
+
   const { data: auditLogs = [] } = useQuery({
     queryKey: ['adminAuditLogs'],
     queryFn: () => getAdminAuditLogs(50),
@@ -174,16 +194,18 @@ export function AdminPanel() {
   });
 
   const forceActiveMutation = useMutation({
-    mutationFn: (timerId: string) => forceTimerActive(timerId),
+    mutationFn: (allocationId: string) => forceAllocationActive(allocationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current'] });
     },
   });
 
   const forceExpiredMutation = useMutation({
-    mutationFn: (timerId: string) => forceTimerExpired(timerId),
+    mutationFn: (allocationId: string) => forceAllocationExpired(allocationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current'] });
     },
   });
 
@@ -345,7 +367,7 @@ export function AdminPanel() {
 
   // Find all current day's timers (those with today's allocation)
   const getCurrentDayTimers = () => {
-    return timers.filter(timer => timer.todayAllocation);
+    return timersWithCurrent.filter(timer => timer.todayAllocation);
   };
 
   // Helper function to reset timer form to default state
@@ -398,14 +420,14 @@ export function AdminPanel() {
     }
   };
 
-  const handleForceActive = async (timer: Timer) => {
-    // Just set the forceActiveAt flag on the timer, don't manipulate checkouts
-    await forceActiveMutation.mutateAsync(timer.id);
+  const handleForceActive = async (timer: Timer & { todayAllocation?: { id: string } }) => {
+    if (!timer.todayAllocation?.id) return;
+    await forceActiveMutation.mutateAsync(timer.todayAllocation.id);
   };
 
-  const handleForceExpired = async (timer: Timer) => {
-    // Just set the forceExpiredAt flag on the timer, don't manipulate checkouts
-    await forceExpiredMutation.mutateAsync(timer.id);
+  const handleForceExpired = async (timer: Timer & { todayAllocation?: { id: string } }) => {
+    if (!timer.todayAllocation?.id) return;
+    await forceExpiredMutation.mutateAsync(timer.todayAllocation.id);
   };
 
   const handleEditTimer = (timer: Timer) => {
@@ -880,7 +902,7 @@ export function AdminPanel() {
                             onClick={() => handleForceActive(currentDayTimer)}
                             disabled={forceActiveMutation.isPending}
                             className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                              currentDayTimer.forceActiveAt
+                              currentDayTimer.todayAllocation?.manualOverride === 'active'
                                 ? 'bg-green-600 text-white dark:bg-green-600'
                                 : 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                             }`}
@@ -891,7 +913,7 @@ export function AdminPanel() {
                             onClick={() => handleForceExpired(currentDayTimer)}
                             disabled={forceExpiredMutation.isPending}
                             className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                              currentDayTimer.forceExpiredAt
+                              currentDayTimer.todayAllocation?.manualOverride === 'expired'
                                 ? 'bg-red-600 text-white dark:bg-red-600'
                                 : 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                             }`}
@@ -957,7 +979,7 @@ export function AdminPanel() {
               ))}
 
           <div className="space-y-2">
-            {timers.map((timer) => (
+            {timersWithCurrent.map((timer) => (
               <div key={timer.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">

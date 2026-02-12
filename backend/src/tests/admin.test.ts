@@ -8,7 +8,7 @@ describe('Admin API', () => {
       
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('hasPinConfigured', false);
-      expect(res.body).toHaveProperty('timezone', 'UTC');
+      expect(res.body).toHaveProperty('timezone', 'America/New_York');
     });
 
     it('should return settings with hasPinConfigured true when PIN is set', async () => {

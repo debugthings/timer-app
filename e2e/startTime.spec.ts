@@ -103,16 +103,16 @@ test.describe('Timer Start Time', () => {
 });
 
 test.describe('Timer Start Time API', () => {
-  test('should return availability status via API', async ({ request }) => {
+  test('should return allocation active status via /current API', async ({ request }) => {
     const { timer } = await setupTimerWithStartTime(request, '23:59');
     
-    const response = await request.get(`http://localhost:3001/api/timers/${timer.id}/expiration`);
+    const response = await request.get(`http://localhost:3001/api/timers/${timer.id}/current`);
     expect(response.ok()).toBeTruthy();
     
     const data = await response.json();
-    expect(data).toHaveProperty('available');
-    expect(data).toHaveProperty('reason');
-    expect(typeof data.available).toBe('boolean');
+    expect(data).toHaveProperty('allocation');
+    expect(data.allocation).toHaveProperty('active');
+    expect(typeof data.allocation.active).toBe('boolean');
   });
 
   test('should reject checkout creation before start time', async ({ request }) => {

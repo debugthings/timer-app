@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Timer, AlarmSound } from '../../types';
 import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAuditLog } from '../../services/api';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
+import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAuditLog, getTimerCurrent } from '../../services/api';
 import { stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
-import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
 interface TimerCardProps {
@@ -19,13 +18,19 @@ export function TimerCard({ timer }: TimerCardProps) {
   const [showAlarmSelector, setShowAlarmSelector] = useState(false);
   const operationInProgress = useRef(false); // Prevent double-clicks
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const allocation = timer.todayAllocation;
   const hasNotifiedRef = useRef(false);
   const hasExpiredAlarmRef = useRef(false);
-  const availability = useTimerAvailability(timer.id, {
-    pollIntervalMs: (timer.defaultExpirationTime || timer.defaultStartTime) ? 10000 : 60000,
+
+  const { data: currentData, isLoading: isLoadingCurrent } = useQuery({
+    queryKey: ['timer-current', timer.id],
+    queryFn: () => getTimerCurrent(timer.id),
+    refetchInterval: 5000,
   });
-  const isAvailable = availability.available;
+
+  const timerData = currentData?.timer ?? timer;
+  const allocation = currentData?.allocation;
+  const isAvailable = allocation?.active ?? true;
+  const availabilityReason = allocation?.reason;
   const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
 
   // Quick checkout options (only show if enough time remaining)
@@ -41,11 +46,14 @@ export function TimerCard({ timer }: TimerCardProps) {
     { label: '1hr', minutes: 60 },
   ].filter(option => option.minutes * 60 <= remainingSeconds);
 
+  const invalidateCurrent = () => {
+    queryClient.invalidateQueries({ queryKey: ['timers'] });
+    queryClient.invalidateQueries({ queryKey: ['timer-current', timer.id] });
+  };
+
   const createCheckoutMutation = useMutation({
     mutationFn: createCheckout,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
-    },
+    onSuccess: invalidateCurrent,
   });
   
   const activeCheckout = allocation?.checkouts?.find(
@@ -106,14 +114,15 @@ export function TimerCard({ timer }: TimerCardProps) {
     };
   }, []);
 
-  // Trigger alarm when timer reaches end-of-day expiration
+  // Trigger alarm when timer reaches end-of-day expiration (from /current allocation.active)
   useEffect(() => {
-    if (availability.reason === 'after_expiration' && !hasExpiredAlarmRef.current) {
+    const isExpired = allocation?.active === false && availabilityReason === 'after_expiration';
+    if (isExpired && !hasExpiredAlarmRef.current) {
       hasExpiredAlarmRef.current = true;
-      triggerAlarm(timer.id, timer.name, timer.person?.name, 'expired', normalizeAlarmSound(timer.alarmSound));
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      triggerAlarm(timerData.id, timerData.name, timerData.person?.name, 'expired', normalizeAlarmSound(timerData.alarmSound));
+      queryClient.invalidateQueries({ queryKey: ['timer-current', timer.id] });
     }
-  }, [availability.reason, timer.id, timer.name, timer.person?.name, timer.alarmSound, triggerAlarm, queryClient]);
+  }, [allocation?.active, availabilityReason, timer.id, timerData.id, timerData.name, timerData.person?.name, timerData.alarmSound, triggerAlarm, queryClient]);
 
   useEffect(() => {
     if (isRunning && hasActiveEntry && activeCheckout) {
@@ -133,7 +142,7 @@ export function TimerCard({ timer }: TimerCardProps) {
           // Trigger alarm (plays sound and shows acknowledge UI in TimerCard - only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
-            triggerAlarm(timer.id, timer.name, timer.person?.name, 'completed', timer.alarmSound);
+            triggerAlarm(timerData.id, timerData.name, timerData.person?.name, 'completed', timerData.alarmSound);
           }
         } else {
           setLiveCheckoutUsed(totalCheckoutElapsed);
@@ -144,7 +153,7 @@ export function TimerCard({ timer }: TimerCardProps) {
     } else {
       setLiveCheckoutUsed(activeCheckout?.usedSeconds || 0);
     }
-  }, [isRunning, hasActiveEntry, activeCheckout, timer.name, timer.person?.name]);
+  }, [isRunning, hasActiveEntry, activeCheckout, timerData.name, timerData.person?.name]);
 
   // Handle click outside and focus loss for dropdown
   useEffect(() => {
@@ -189,14 +198,14 @@ export function TimerCard({ timer }: TimerCardProps) {
 
   // Generate schedule summary
   const getScheduleSummary = () => {
-    if (!timer.schedules || timer.schedules.length === 0) {
+    if (!timerData.schedules || timerData.schedules.length === 0) {
       return null;
     }
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
     // Group schedules by seconds
-    const groupedByTime = timer.schedules.reduce((acc, schedule) => {
+    const groupedByTime = timerData.schedules!.reduce((acc, schedule) => {
       const key = schedule.seconds.toString();
       if (!acc[key]) {
         acc[key] = [];
@@ -237,7 +246,7 @@ export function TimerCard({ timer }: TimerCardProps) {
       } else {
         await startCheckout(activeCheckout.id);
       }
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      invalidateCurrent();
     } catch (error) {
       console.error('Failed to start timer:', error);
     } finally {
@@ -257,7 +266,7 @@ export function TimerCard({ timer }: TimerCardProps) {
 
     try {
       await pauseCheckout(activeCheckout.id);
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      invalidateCurrent();
     } catch (error) {
       console.error('Failed to pause timer:', error);
     } finally {
@@ -277,7 +286,7 @@ export function TimerCard({ timer }: TimerCardProps) {
 
     try {
       await stopCheckout(activeCheckout.id);
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      invalidateCurrent();
     } catch (error) {
       console.error('Failed to stop timer:', error);
     } finally {
@@ -293,7 +302,7 @@ export function TimerCard({ timer }: TimerCardProps) {
     if (activeCheckout) {
       try {
         await stopCheckout(activeCheckout.id);
-        queryClient.invalidateQueries({ queryKey: ['timers'] });
+        invalidateCurrent();
       } catch (error) {
         console.error('Failed to stop timer:', error);
       }
@@ -328,7 +337,7 @@ export function TimerCard({ timer }: TimerCardProps) {
   const handleAlarmSoundChange = async (newSound: AlarmSound) => {
     try {
       await updateTimerAlarmSound(timer.id, newSound);
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      invalidateCurrent();
       setShowAlarmSelector(false);
 
       // Play preview of the saved sound
@@ -352,7 +361,7 @@ export function TimerCard({ timer }: TimerCardProps) {
       // Immediately start the checkout
       await startCheckout(checkoutResult.id);
 
-      queryClient.invalidateQueries({ queryKey: ['timers'] });
+      invalidateCurrent();
     } catch (error) {
       console.error('Failed to create/start quick checkout:', error);
     } finally {
@@ -361,10 +370,11 @@ export function TimerCard({ timer }: TimerCardProps) {
   };
 
   const isThisTimerAlarming = alarmState?.isActive && alarmState?.timerId === timer.id;
+  const isDataLoading = isLoadingCurrent;
 
   return (
     <>
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''}`}>
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6 ${isThisTimerAlarming ? 'ring-2 ring-red-500 ring-opacity-100' : ''} ${isDataLoading ? 'opacity-75' : ''}`}>
         {isThisTimerAlarming && (
           <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
             <div className="flex items-center justify-between gap-4">
@@ -396,16 +406,16 @@ export function TimerCard({ timer }: TimerCardProps) {
         )}
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{timer.name}</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">{timer.person?.name}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{timerData.name}</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">{timerData.person?.name}</p>
             {scheduleSummary && (
               <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
                 Schedule: {scheduleSummary}
               </p>
             )}
-            {(timer.defaultStartTime || timer.defaultExpirationTime) && (
+            {(timerData.defaultStartTime || timerData.defaultExpirationTime) && (
               <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                Available: {timer.defaultStartTime || '00:00'} – {timer.defaultExpirationTime || '23:59'}
+                Available: {timerData.defaultStartTime || '00:00'} – {timerData.defaultExpirationTime || '23:59'}
               </p>
             )}
             <div className="relative">
@@ -419,7 +429,7 @@ export function TimerCard({ timer }: TimerCardProps) {
                 aria-expanded={showAlarmSelector}
                 aria-haspopup="listbox"
               >
-                🔔 {ALARM_SOUND_LABELS[normalizeAlarmSound(timer.alarmSound)]}
+                🔔 {ALARM_SOUND_LABELS[normalizeAlarmSound(timerData.alarmSound)]}
               </button>
               {showAlarmSelector && (
                 <div
@@ -448,12 +458,12 @@ export function TimerCard({ timer }: TimerCardProps) {
                           handleAlarmSoundChange(sound);
                         }}
                         className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm ${
-                          normalizeAlarmSound(timer.alarmSound) === sound ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold' : ''
+                          normalizeAlarmSound(timerData.alarmSound) === sound ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold' : ''
                         }`}
                         title="Click to preview • Double-click to save"
                       >
                         {ALARM_SOUND_LABELS[sound]}
-                        {normalizeAlarmSound(timer.alarmSound) === sound && (
+                        {normalizeAlarmSound(timerData.alarmSound) === sound && (
                           <span className="ml-2 text-blue-600">✓</span>
                         )}
                       </button>
@@ -487,12 +497,12 @@ export function TimerCard({ timer }: TimerCardProps) {
                         handleAlarmSoundChange(sound);
                       }}
                       className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        normalizeAlarmSound(timer.alarmSound) === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
+                        normalizeAlarmSound(timerData.alarmSound) === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
                       }`}
                       title="Click to preview • Double-click to save"
                     >
                       {ALARM_SOUND_LABELS[sound]}
-                      {normalizeAlarmSound(timer.alarmSound) === sound && (
+                      {normalizeAlarmSound(timerData.alarmSound) === sound && (
                         <span className="ml-2 text-blue-600">✓</span>
                       )}
                     </button>
@@ -505,7 +515,7 @@ export function TimerCard({ timer }: TimerCardProps) {
             )}
           </div>
           {!isAvailable ? (
-            availability.reason === 'before_start' ? (
+            availabilityReason === 'before_start' ? (
               <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-full text-sm font-medium">
                 Not Yet Available
               </span>
@@ -524,12 +534,12 @@ export function TimerCard({ timer }: TimerCardProps) {
         {/* Detailed availability message */}
         {!isAvailable && (
           <div className="text-xs text-center mb-2 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-            {availability.reason === 'before_start'
+            {availabilityReason === 'before_start'
               ? 'Timer will become available at its start time today'
               : 'Timer has reached its expiration time for today and will reset tomorrow'}
-            {(timer.defaultStartTime || timer.defaultExpirationTime) && (
+            {(timerData.defaultStartTime || timerData.defaultExpirationTime) && (
               <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                Window: {timer.defaultStartTime || '00:00'} - {timer.defaultExpirationTime || '23:59'}
+                Window: {timerData.defaultStartTime || '00:00'} - {timerData.defaultExpirationTime || '23:59'}
               </div>
             )}
           </div>

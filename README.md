@@ -275,11 +275,11 @@ mkdir -p /opt/timer-app
 mkdir -p /opt/timer-app/data
 
 # Copy built backend
-cp -r /tmp/timer-app/backend/dist /opt/timer-app/
-cp -r /tmp/timer-app/backend/public /opt/timer-app/
-cp -r /tmp/timer-app/backend/node_modules /opt/timer-app/
-cp -r /tmp/timer-app/backend/prisma /opt/timer-app/
-cp /tmp/timer-app/backend/package*.json /opt/timer-app/
+cp -r /tmp/timer-app-build/backend/dist /opt/timer-app/
+cp -r /tmp/timer-app-build/backend/public /opt/timer-app/
+cp -r /tmp/timer-app-build/backend/node_modules /opt/timer-app/
+cp -r /tmp/timer-app-build/backend/prisma /opt/timer-app/
+cp /tmp/timer-app-build/backend/package*.json /opt/timer-app/
 
 # Create production .env file
 cat > /opt/timer-app/.env << 'ENVEOF'
@@ -499,7 +499,7 @@ When a timer has an expiration time set:
 ### Timers
 - `GET /api/timers` - List all timers with today's allocations
 - `GET /api/timers/:id` - Get timer with today's allocation
-- `GET /api/timers/:id/expiration` - Check if timer is expired
+- `GET /api/timers/:id/current` - Get timer with today's allocation and active status
 - `GET /api/timers/:id/allocation` - Get allocation for specific date
 - `POST /api/timers` - Create timer (admin)
 - `PUT /api/timers/:id` - Update timer (admin)

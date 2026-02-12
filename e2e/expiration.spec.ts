@@ -115,14 +115,15 @@ test.describe('Timer Expiration', () => {
 });
 
 test.describe('Timer Expiration API', () => {
-  test('should return expiration status via API', async ({ request }) => {
+  test('should return allocation active status via /current API', async ({ request }) => {
     const { timer } = await setupTimerWithExpiration(request, '00:01');
     
-    const response = await request.get(`http://localhost:3001/api/timers/${timer.id}/expiration`);
+    const response = await request.get(`http://localhost:3001/api/timers/${timer.id}/current`);
     expect(response.ok()).toBeTruthy();
     
     const data = await response.json();
-    expect(data).toHaveProperty('expired');
-    expect(typeof data.expired).toBe('boolean');
+    expect(data).toHaveProperty('allocation');
+    expect(data.allocation).toHaveProperty('active');
+    expect(typeof data.allocation.active).toBe('boolean');
   });
 });

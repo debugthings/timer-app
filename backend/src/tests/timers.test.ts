@@ -43,8 +43,7 @@ describe('Timers API', () => {
       expect(res.body).toHaveLength(1);
       expect(res.body[0]).toHaveProperty('name', 'Screen Time');
       expect(res.body[0]).toHaveProperty('defaultDailySeconds', 7200);
-      expect(res.body[0]).toHaveProperty('todayAllocation');
-      expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds');
+      // GET /timers returns timers without allocations; cards fetch /current for allocation data
     });
   });
 
@@ -200,27 +199,27 @@ describe('Timers API', () => {
     });
   });
 
-  describe('GET /api/timers/:id/expiration', () => {
-    it('should return availability status for timer', async () => {
+  describe('GET /api/timers/:id/current', () => {
+    it('should return timer and allocation with active status', async () => {
       const timer = await createTestTimer(testPersonId, { name: 'Timer' });
       
-      const res = await testRequest.get(`/api/timers/${timer.id}/expiration`);
+      const res = await testRequest.get(`/api/timers/${timer.id}/current`);
       
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('available');
-      expect(res.body).toHaveProperty('expired');
-      expect(typeof res.body.available).toBe('boolean');
-      expect(typeof res.body.expired).toBe('boolean');
+      expect(res.body).toHaveProperty('timer');
+      expect(res.body).toHaveProperty('allocation');
+      expect(res.body.timer).toHaveProperty('id', timer.id);
+      expect(res.body.allocation).toHaveProperty('active');
+      expect(typeof res.body.allocation.active).toBe('boolean');
     });
 
-    it('should return available for timer without time restrictions', async () => {
+    it('should return active allocation for timer without time restrictions', async () => {
       const timer = await createTestTimer(testPersonId, { name: 'Timer' });
       
-      const res = await testRequest.get(`/api/timers/${timer.id}/expiration`);
+      const res = await testRequest.get(`/api/timers/${timer.id}/current`);
       
       expect(res.status).toBe(200);
-      expect(res.body.available).toBe(true);
-      expect(res.body.expired).toBe(false);
+      expect(res.body.allocation.active).toBe(true);
     });
   });
 
@@ -348,16 +347,15 @@ describe('Timers API', () => {
         restoreTestTime();
       });
 
-      it('should use Monday schedule when today is Monday (GET /timers)', async () => {
+      it('should use Monday schedule when today is Monday (GET /timers/:id/current)', async () => {
         setTestTime(MONDAY_FEB_9_2026);
 
         const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
 
-        const res = await testRequest.get('/api/timers');
+        const res = await testRequest.get(`/api/timers/${timer.id}/current`);
 
         expect(res.status).toBe(200);
-        expect(res.body).toHaveLength(1);
-        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 1800);
+        expect(res.body.allocation).toHaveProperty('totalSeconds', 1800);
       });
 
       it('should use Monday schedule when today is Monday (GET /timers/:id)', async () => {
@@ -371,26 +369,26 @@ describe('Timers API', () => {
         expect(res.body.todayAllocation).toHaveProperty('totalSeconds', 1800);
       });
 
-      it('should use Sunday schedule when today is Sunday (GET /timers)', async () => {
+      it('should use Sunday schedule when today is Sunday (GET /timers/:id/current)', async () => {
         setTestTime(SUNDAY_FEB_8_2026);
 
         const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
 
-        const res = await testRequest.get('/api/timers');
+        const res = await testRequest.get(`/api/timers/${timer.id}/current`);
 
         expect(res.status).toBe(200);
-        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 7200);
+        expect(res.body.allocation).toHaveProperty('totalSeconds', 7200);
       });
 
-      it('should use default when today is Saturday and no schedule (GET /timers)', async () => {
+      it('should use default when today is Saturday and no schedule (GET /timers/:id/current)', async () => {
         setTestTime(SATURDAY_FEB_7_2026);
 
         const timer = await createTestTimer(testPersonId, scheduledTimerConfig);
 
-        const res = await testRequest.get('/api/timers');
+        const res = await testRequest.get(`/api/timers/${timer.id}/current`);
 
         expect(res.status).toBe(200);
-        expect(res.body[0].todayAllocation).toHaveProperty('totalSeconds', 3600);
+        expect(res.body.allocation).toHaveProperty('totalSeconds', 3600);
       });
     });
   });
