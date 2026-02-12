@@ -135,12 +135,6 @@ export const stopCheckout = (id: string) =>
 export const cancelCheckout = (id: string) =>
   api.post<Checkout>(`/checkouts/${id}/cancel`).then((r) => r.data);
 
-export const forceCheckoutActive = (id: string) =>
-  api.post<any>(`/checkouts/${id}/force-active`).then((r) => r.data);
-
-export const forceCheckoutExpired = (id: string) =>
-  api.post<any>(`/checkouts/${id}/force-expired`).then((r) => r.data);
-
 // Allocation force state endpoints (admin only)
 export const forceAllocationActive = (allocationId: string) =>
   api.post<any>(`/allocations/${allocationId}/force-active`).then((r) => r.data);

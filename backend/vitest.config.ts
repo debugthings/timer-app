@@ -18,5 +18,11 @@ export default defineConfig({
       DATABASE_URL: 'file:./test.db',
       NODE_ENV: 'test',
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/tests/**', 'src/index.ts'],
+    },
   },
 });

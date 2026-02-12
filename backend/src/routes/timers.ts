@@ -1,7 +1,7 @@
 import express from 'express';
 import { prisma } from '../index';
 import { requireAdminPin } from '../middleware/adminAuth';
-import { isTimerExpired, getTimerAvailability } from '../utils/timerExpiration';
+import { getTimerAvailability } from '../utils/timerExpiration';
 import { computeAllocationActive } from '../utils/allocationActivity';
 import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
 

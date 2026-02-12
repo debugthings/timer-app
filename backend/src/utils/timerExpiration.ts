@@ -1,5 +1,68 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../index';
 import { getDayOfWeek, getCurrentTime, getStartOfDay } from './dateTime';
+
+type TransactionClient = Omit<Prisma.TransactionClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>;
+
+/**
+ * Shared helper: end an active checkout's time entry, update allocation usedSeconds,
+ * and set checkout to final status. Used by forceStopExpiredCheckouts and completeCheckoutsThatRanOutOfTime.
+ */
+async function endCheckoutWithEntry(
+  checkout: {
+    id: string;
+    allocationId: string;
+    allocatedSeconds: number;
+    usedSeconds: number;
+    entries: Array<{ id: string; startTime: Date }>;
+  },
+  tx: TransactionClient,
+  targetStatus: 'COMPLETED' | 'CANCELLED'
+): Promise<void> {
+  const now = new Date();
+  let additionalSeconds = 0;
+
+  if (checkout.entries.length > 0) {
+    const activeEntry = checkout.entries[0];
+    const actualDurationSeconds = Math.floor(
+      (now.getTime() - activeEntry.startTime.getTime()) / 1000
+    );
+    const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+    const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
+
+    await tx.timeEntry.update({
+      where: { id: activeEntry.id },
+      data: {
+        endTime: now,
+        durationSeconds,
+      },
+    });
+
+    additionalSeconds = durationSeconds;
+  }
+
+  const totalUsedSeconds =
+    targetStatus === 'COMPLETED'
+      ? checkout.allocatedSeconds
+      : Math.min(checkout.usedSeconds + additionalSeconds, checkout.allocatedSeconds);
+
+  if (additionalSeconds > 0) {
+    await tx.dailyAllocation.update({
+      where: { id: checkout.allocationId },
+      data: {
+        usedSeconds: { increment: additionalSeconds },
+      },
+    });
+  }
+
+  await tx.checkout.update({
+    where: { id: checkout.id },
+    data: {
+      usedSeconds: totalUsedSeconds,
+      status: targetStatus,
+    },
+  });
+}
 
 // Check if a timer is available based on start and expiration times (timezone-aware)
 export async function getTimerAvailability(timerId: string): Promise<{
@@ -44,12 +107,6 @@ export async function getTimerAvailability(timerId: string): Promise<{
   return { available: true };
 }
 
-// Check if a timer is expired based on its schedule (backward compatibility)
-export async function isTimerExpired(timerId: string): Promise<boolean> {
-  const availability = await getTimerAvailability(timerId);
-  return availability.reason === 'after_expiration';
-}
-
 // Force stop all active checkouts for an expired timer (uses transaction)
 export async function forceStopExpiredCheckouts(timerId: string): Promise<void> {
   const activeCheckouts = await prisma.checkout.findMany({
@@ -68,60 +125,10 @@ export async function forceStopExpiredCheckouts(timerId: string): Promise<void> 
     },
   });
 
-  // Process all checkouts in a single transaction
   if (activeCheckouts.length > 0) {
     await prisma.$transaction(async (tx) => {
       for (const checkout of activeCheckouts) {
-        let totalUsedSeconds = checkout.usedSeconds;
-        let additionalSeconds = 0;
-
-        // End any active time entry
-        if (checkout.entries.length > 0) {
-          const activeEntry = checkout.entries[0];
-          const now = new Date();
-          const actualDurationSeconds = Math.floor(
-            (now.getTime() - activeEntry.startTime.getTime()) / 1000
-          );
-
-          // Cap duration at remaining allocated time to prevent overrun
-          const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
-          const durationSeconds = Math.min(actualDurationSeconds, remainingSeconds);
-
-          await tx.timeEntry.update({
-            where: { id: activeEntry.id },
-            data: {
-              endTime: now,
-              durationSeconds,
-            },
-          });
-
-          totalUsedSeconds += durationSeconds;
-          additionalSeconds = durationSeconds;
-        }
-
-        // Cap total used seconds at allocated amount
-        totalUsedSeconds = Math.min(totalUsedSeconds, checkout.allocatedSeconds);
-
-        // Update allocation with used time
-        if (additionalSeconds > 0) {
-          await tx.dailyAllocation.update({
-            where: { id: checkout.allocationId },
-            data: {
-              usedSeconds: {
-                increment: additionalSeconds,
-              },
-            },
-          });
-        }
-
-        // Mark checkout as cancelled
-        await tx.checkout.update({
-          where: { id: checkout.id },
-          data: {
-            usedSeconds: totalUsedSeconds,
-            status: 'CANCELLED',
-          },
-        });
+        await endCheckoutWithEntry(checkout, tx, 'CANCELLED');
       }
     });
   }
@@ -154,34 +161,7 @@ export async function completeCheckoutsThatRanOutOfTime(): Promise<void> {
     if (totalUsedSeconds < checkout.allocatedSeconds) continue; // Not yet expired
 
     await prisma.$transaction(async (tx) => {
-      const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
-      const durationSeconds = Math.min(entryElapsed, remainingSeconds);
-
-      await tx.timeEntry.update({
-        where: { id: activeEntry.id },
-        data: {
-          endTime: now,
-          durationSeconds,
-        },
-      });
-
-      const additionalSeconds = Math.min(durationSeconds, remainingSeconds);
-      if (additionalSeconds > 0) {
-        await tx.dailyAllocation.update({
-          where: { id: checkout.allocationId },
-          data: {
-            usedSeconds: { increment: additionalSeconds },
-          },
-        });
-      }
-
-      await tx.checkout.update({
-        where: { id: checkout.id },
-        data: {
-          usedSeconds: checkout.allocatedSeconds,
-          status: 'COMPLETED',
-        },
-      });
+      await endCheckoutWithEntry(checkout, tx, 'COMPLETED');
     });
   }
 }

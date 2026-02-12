@@ -17,59 +17,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return false;
 }
 
-// Show a notification (works with both PWA and regular browser)
-export async function showNotification(title: string, options?: NotificationOptions): Promise<void> {
-  if (!('Notification' in window)) {
-    console.log('This browser does not support notifications');
-    return;
-  }
-
-  // Request permission if not granted
-  if (Notification.permission !== 'granted') {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      return;
-    }
-  }
-
-  // Try to use service worker for better iOS support
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const notificationOptions: NotificationOptions & { vibrate?: number[] } = {
-        icon: '/pwa-192x192.png',
-        badge: '/pwa-192x192.png',
-        vibrate: [200, 100, 200],
-        tag: 'timer-notification',
-        ...options,
-      };
-      await registration.showNotification(title, notificationOptions);
-      return;
-    } catch (error) {
-      console.log('Service worker notification failed, falling back to regular notification');
-    }
-  }
-
-  // Fallback to regular notification
-  if (Notification.permission === 'granted') {
-    new Notification(title, {
-      icon: '/pwa-192x192.png',
-      badge: '/pwa-192x192.png',
-      ...options,
-    });
-  }
-}
-
-// Play a completion sound (single beep for notifications)
-export async function playCompletionSound(): Promise<void> {
-  try {
-    // Use a short, pleasant sound for completion notifications
-    await playAlarmSound('/media/alarms/Neon.ogg');
-  } catch (error) {
-    console.error('Failed to play completion sound:', error);
-  }
-}
-
 // Alarm sound types - expanded to include more available OGG files + ringtones
 export type AlarmSound =
   | 'helium' | 'firedrill' | 'cesium' | 'osmium' | 'plutonium'

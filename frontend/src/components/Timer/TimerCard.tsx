@@ -495,44 +495,6 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
                 </div>
               )}
             </div>
-            {showAlarmSelector && (
-              <div 
-                className="absolute z-10 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 space-y-1 min-w-[200px] max-h-[280px] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="text-xs text-gray-500 font-semibold mb-2">
-                  Click to preview • Double-click to save:
-                </div>
-                {(Object.keys(ALARM_SOUND_LABELS) as AlarmSound[]).map((sound) => (
-                  <div key={sound} className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleAlarmSoundPreview(sound);
-                      }}
-                      onDoubleClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleAlarmSoundChange(sound);
-                      }}
-                      className={`flex-1 text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        normalizeAlarmSound(timerData.alarmSound) === sound ? 'bg-blue-50 text-blue-700 font-semibold' : ''
-                      }`}
-                      title="Click to preview • Double-click to save"
-                    >
-                      {ALARM_SOUND_LABELS[sound]}
-                      {normalizeAlarmSound(timerData.alarmSound) === sound && (
-                        <span className="ml-2 text-blue-600">✓</span>
-                      )}
-                    </button>
-                  </div>
-                ))}
-                <div className="text-xs text-gray-400 mt-2 pt-2 border-t">
-                  💡 Click to preview • Double-click to save
-                </div>
-              </div>
-            )}
           </div>
           {!isAvailable ? (
             availabilityReason === 'before_start' ? (

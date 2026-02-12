@@ -210,6 +210,65 @@ describe('Checkouts API', () => {
     });
   });
 
+  describe('POST /api/checkouts/:id/force-active', () => {
+    it('should force checkout to active state (admin only)', async () => {
+      const checkout = await createTestCheckout(testTimerId, { status: 'PAUSED' });
+
+      const res = await testRequest
+        .post(`/api/checkouts/${checkout.id}/force-active`)
+        .set('X-Admin-PIN', adminPin);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('status', 'ACTIVE');
+    });
+
+    it('should return 401 without admin PIN', async () => {
+      const checkout = await createTestCheckout(testTimerId);
+
+      const res = await testRequest.post(`/api/checkouts/${checkout.id}/force-active`);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 404 for non-existent checkout', async () => {
+      const res = await testRequest
+        .post('/api/checkouts/non-existent-uuid/force-active')
+        .set('X-Admin-PIN', adminPin);
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('POST /api/checkouts/:id/force-expired', () => {
+    it('should force checkout to expired/completed state (admin only)', async () => {
+      const checkout = await createTestCheckout(testTimerId, { status: 'ACTIVE' });
+      await testRequest.post(`/api/checkouts/${checkout.id}/start`);
+
+      const res = await testRequest
+        .post(`/api/checkouts/${checkout.id}/force-expired`)
+        .set('X-Admin-PIN', adminPin);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('status', 'COMPLETED');
+    });
+
+    it('should return 401 without admin PIN', async () => {
+      const checkout = await createTestCheckout(testTimerId);
+
+      const res = await testRequest.post(`/api/checkouts/${checkout.id}/force-expired`);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 404 for non-existent checkout', async () => {
+      const res = await testRequest
+        .post('/api/checkouts/non-existent-uuid/force-expired')
+        .set('X-Admin-PIN', adminPin);
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('Transactional integrity', () => {
     it('should maintain data consistency on concurrent operations', async () => {
       const checkout = await createTestCheckout(testTimerId, {
