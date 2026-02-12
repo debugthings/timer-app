@@ -6,7 +6,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { GlobalAlarmProvider } from './hooks/useGlobalAlarm';
 import { getSettings, verifyPin } from './services/api';
 import { PinModal } from './components/Admin/PinModal';
-import { AlarmBanner } from './components/AlarmBanner';
 import { FirstTimeSetup } from './pages/FirstTimeSetup';
 import { Dashboard } from './pages/Dashboard';
 import { TimerDetail } from './pages/TimerDetail';
@@ -74,7 +73,6 @@ function AppContent() {
 
   return (
     <>
-      <AlarmBanner />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/timer/:id" element={<TimerDetail />} />

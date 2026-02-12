@@ -4,7 +4,7 @@ import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAuditLog } from '../../services/api';
-import { showNotification, stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
+import { stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
 import { useTimerAvailability } from '../../hooks/useTimerExpiration';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
@@ -21,7 +21,10 @@ export function TimerCard({ timer }: TimerCardProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const allocation = timer.todayAllocation;
   const hasNotifiedRef = useRef(false);
-  const availability = useTimerAvailability(timer.id);
+  const hasExpiredAlarmRef = useRef(false);
+  const availability = useTimerAvailability(timer.id, {
+    pollIntervalMs: (timer.defaultExpirationTime || timer.defaultStartTime) ? 10000 : 60000,
+  });
   const isAvailable = availability.available;
   const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
 
@@ -102,7 +105,16 @@ export function TimerCard({ timer }: TimerCardProps) {
       stopContinuousAlarm();
     };
   }, []);
-  
+
+  // Trigger alarm when timer reaches end-of-day expiration
+  useEffect(() => {
+    if (availability.reason === 'after_expiration' && !hasExpiredAlarmRef.current) {
+      hasExpiredAlarmRef.current = true;
+      triggerAlarm(timer.id, timer.name, timer.person?.name, 'expired', normalizeAlarmSound(timer.alarmSound));
+      queryClient.invalidateQueries({ queryKey: ['timers'] });
+    }
+  }, [availability.reason, timer.id, timer.name, timer.person?.name, timer.alarmSound, triggerAlarm, queryClient]);
+
   useEffect(() => {
     if (isRunning && hasActiveEntry && activeCheckout) {
       const activeEntry = activeCheckout.entries?.find((e) => !e.endTime);
@@ -118,14 +130,10 @@ export function TimerCard({ timer }: TimerCardProps) {
         if (totalCheckoutElapsed >= activeCheckout.allocatedSeconds) {
           setLiveCheckoutUsed(activeCheckout.allocatedSeconds);
           
-          // Show notification, alarm, and modal (only once)
+          // Trigger alarm (plays sound and shows acknowledge UI in TimerCard - only once)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
             triggerAlarm(timer.id, timer.name, timer.person?.name, 'completed', timer.alarmSound);
-            showNotification(`${timer.name} - Timer Complete!`, {
-              body: `Checkout time has ended for ${timer.person?.name || 'timer'}.`,
-              requireInteraction: true,
-            });
           }
         } else {
           setLiveCheckoutUsed(totalCheckoutElapsed);
@@ -281,6 +289,16 @@ export function TimerCard({ timer }: TimerCardProps) {
   const handleAcknowledgeAlarm = async () => {
     acknowledgeAlarm();
 
+    // Stop the current session immediately
+    if (activeCheckout) {
+      try {
+        await stopCheckout(activeCheckout.id);
+        queryClient.invalidateQueries({ queryKey: ['timers'] });
+      } catch (error) {
+        console.error('Failed to stop timer:', error);
+      }
+    }
+
     // Log the alarm acknowledgment
     try {
       await createAuditLog(timer.id, {
@@ -383,6 +401,11 @@ export function TimerCard({ timer }: TimerCardProps) {
             {scheduleSummary && (
               <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
                 Schedule: {scheduleSummary}
+              </p>
+            )}
+            {(timer.defaultStartTime || timer.defaultExpirationTime) && (
+              <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                Available: {timer.defaultStartTime || '00:00'} – {timer.defaultExpirationTime || '23:59'}
               </p>
             )}
             <div className="relative">

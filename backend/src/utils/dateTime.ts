@@ -25,20 +25,23 @@ export function getDayOfWeek(date: Date): number {
   return date.getUTCDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 }
 
-// Get current time in HH:MM format for configured timezone
+// Get current time in HH:MM format for configured timezone (24-hour, zero-padded)
 export async function getCurrentTime(): Promise<string> {
   const timezone = await getTimezone();
   const now = new Date();
-  const timeStr = now.toLocaleString('en-US', { 
+  const timeStr = now.toLocaleString('en-US', {
     timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false 
+    hour12: false,
+    hourCycle: 'h23', // Ensure 00:00 not 24:00 for midnight
   });
-  // Parse the formatted string to extract just HH:MM
-  const match = timeStr.match(/(\d{2}):(\d{2})/);
+  // Parse the formatted string to extract HH:MM (ensure zero-padded for correct string comparison)
+  const match = timeStr.match(/(\d{1,2}):(\d{1,2})/);
   if (match) {
-    return `${match[1]}:${match[2]}`;
+    const h = match[1].padStart(2, '0');
+    const m = match[2].padStart(2, '0');
+    return `${h}:${m}`;
   }
   return timeStr;
 }

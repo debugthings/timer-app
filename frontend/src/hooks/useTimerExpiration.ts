@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getTimerExpiration } from '../services/api';
 
 export interface TimerAvailability {
   available: boolean;
@@ -9,7 +9,13 @@ export interface TimerAvailability {
   forceActive?: boolean; // Whether timer was forcibly activated by admin
 }
 
-export function useTimerAvailability(timerId: string | undefined): TimerAvailability {
+export interface UseTimerAvailabilityOptions {
+  /** Poll more frequently when timer has expiration time (default: 60000ms) */
+  pollIntervalMs?: number;
+}
+
+export function useTimerAvailability(timerId: string | undefined, options?: UseTimerAvailabilityOptions): TimerAvailability {
+  const pollIntervalMs = options?.pollIntervalMs ?? 60000;
   const [availability, setAvailability] = useState<TimerAvailability>({
     available: true,
     reason: undefined,
@@ -21,13 +27,13 @@ export function useTimerAvailability(timerId: string | undefined): TimerAvailabi
 
     const checkAvailability = async () => {
       try {
-        const response = await axios.get(`/api/timers/${timerId}/expiration`);
+        const data = await getTimerExpiration(timerId);
         setAvailability({
-          available: response.data.available ?? true,
-          reason: response.data.reason,
-          expired: response.data.expired ?? false,
-          forceExpired: response.data.forceExpired ?? false,
-          forceActive: response.data.forceActive ?? false,
+          available: data.available ?? true,
+          reason: data.reason,
+          expired: data.expired ?? false,
+          forceExpired: data.forceExpired ?? false,
+          forceActive: data.forceActive ?? false,
         });
       } catch (error) {
         console.error('Failed to check availability:', error);
@@ -37,11 +43,10 @@ export function useTimerAvailability(timerId: string | undefined): TimerAvailabi
     // Check immediately
     checkAvailability();
 
-    // Check every minute
-    const interval = setInterval(checkAvailability, 60000);
+    const interval = setInterval(checkAvailability, pollIntervalMs);
 
     return () => clearInterval(interval);
-  }, [timerId]);
+  }, [timerId, pollIntervalMs]);
 
   return availability;
 }

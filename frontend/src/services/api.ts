@@ -75,6 +75,17 @@ export const updateTimer = (id: string, data: UpdateTimerRequest) =>
 export const updateTimerAlarmSound = (id: string, alarmSound: string) =>
   api.patch<Pick<Timer, 'id' | 'name' | 'alarmSound'>>(`/timers/${id}/alarm-sound`, { alarmSound }).then((r) => r.data);
 
+export interface TimerExpirationResponse {
+  available: boolean;
+  reason?: 'before_start' | 'after_expiration';
+  expired: boolean;
+  forceExpired?: boolean;
+  forceActive?: boolean;
+}
+
+export const getTimerExpiration = (timerId: string) =>
+  api.get<TimerExpirationResponse>(`/timers/${timerId}/expiration`).then((r) => r.data);
+
 export const deleteTimer = (id: string) =>
   api.delete<{ success: boolean }>(`/timers/${id}`).then((r) => r.data);
 
