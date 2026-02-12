@@ -269,13 +269,26 @@ export function AdminPanel() {
   };
 
   const handleToggleDay = (day: number) => {
-    const newSelected = new Set(selectedDays);
-    if (newSelected.has(day)) {
-      newSelected.delete(day);
+    const existingSchedule = schedules.find(s => s.dayOfWeek === day);
+    if (existingSchedule) {
+      // Populate form fields with stored values
+      const hours = Math.floor(existingSchedule.seconds / 3600);
+      const minutes = Math.floor((existingSchedule.seconds % 3600) / 60);
+      setScheduleHours(hours);
+      setScheduleMinutes(minutes);
+      setScheduleStartTime(existingSchedule.startTime || '');
+      setScheduleExpirationTime(existingSchedule.expirationTime || '');
+      // Select this day for editing
+      setSelectedDays(new Set([day]));
     } else {
-      newSelected.add(day);
+      const newSelected = new Set(selectedDays);
+      if (newSelected.has(day)) {
+        newSelected.delete(day);
+      } else {
+        newSelected.add(day);
+      }
+      setSelectedDays(newSelected);
     }
-    setSelectedDays(newSelected);
   };
 
   const handleAddSchedule = () => {
@@ -774,7 +787,11 @@ export function AdminPanel() {
                           {schedules.map((schedule) => (
                             <div
                               key={schedule.dayOfWeek}
-                              className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleToggleDay(schedule.dayOfWeek)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleToggleDay(schedule.dayOfWeek)}
+                              className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/50"
                             >
                               <span className="font-medium text-gray-900 dark:text-white">{getDayName(schedule.dayOfWeek)}:</span>
                               <span>{formatTime(schedule.seconds)}</span>
@@ -785,7 +802,7 @@ export function AdminPanel() {
                               )}
                               <button
                                 type="button"
-                                onClick={() => handleRemoveScheduleDay(schedule.dayOfWeek)}
+                                onClick={(e) => { e.stopPropagation(); handleRemoveScheduleDay(schedule.dayOfWeek); }}
                                 className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 ml-1"
                               >
                                 ×
