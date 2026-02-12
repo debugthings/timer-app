@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../index';
 import { getDayOfWeek, getCurrentTime, getStartOfDay } from './dateTime';
+import { notifyCheckoutComplete } from './checkoutWebhook';
 
 type TransactionClient = Omit<Prisma.TransactionClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>;
 
@@ -163,5 +164,7 @@ export async function completeCheckoutsThatRanOutOfTime(): Promise<void> {
     await prisma.$transaction(async (tx) => {
       await endCheckoutWithEntry(checkout, tx, 'COMPLETED');
     });
+
+    notifyCheckoutComplete(checkout.id);
   }
 }

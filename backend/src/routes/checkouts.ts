@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { getTimerAvailability } from '../utils/timerExpiration';
 import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
 import { requireAdminPin } from '../middleware/adminAuth';
+import { notifyCheckoutComplete } from '../utils/checkoutWebhook';
 
 const router = express.Router();
 
@@ -343,6 +344,10 @@ router.post('/:id/pause', async (req, res) => {
       console.error('Failed to log checkout pause:', logError);
     }
 
+    if (updatedCheckout.status === 'COMPLETED') {
+      notifyCheckoutComplete(updatedCheckout.id);
+    }
+
     res.json(updatedCheckout);
   } catch (error: any) {
     console.error('Pause timer error:', error);
@@ -451,6 +456,8 @@ router.post('/:id/stop', async (req, res) => {
     } catch (logError) {
       console.error('Failed to log checkout stop:', logError);
     }
+
+    notifyCheckoutComplete(updatedCheckout.id);
 
     res.json(updatedCheckout);
   } catch (error: any) {
@@ -723,6 +730,8 @@ router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
     } catch (logError) {
       console.error('Failed to log force expired:', logError);
     }
+
+    notifyCheckoutComplete(updatedCheckout.id);
 
     res.json(updatedCheckout);
   } catch (error: any) {
