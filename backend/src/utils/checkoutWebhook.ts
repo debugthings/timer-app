@@ -28,11 +28,17 @@ export async function notifyCheckoutComplete(checkoutId: string): Promise<void> 
       allocated_minutes: String(Math.floor(checkout.allocatedSeconds / 60)),
     });
 
-    await fetch(WEBHOOK_URL, {
+    const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form.toString(),
     });
+
+    if (response.ok) {
+      console.log('Checkout complete webhook: OK checkout=%s timer=%s status=%d', checkoutId, checkout.timer.name, response.status);
+    } else {
+      console.error('Checkout complete webhook: failed checkout=%s timer=%s status=%d', checkoutId, checkout.timer.name, response.status);
+    }
   } catch (err) {
     console.error('Checkout complete webhook error:', err);
   }

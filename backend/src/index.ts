@@ -69,6 +69,11 @@ process.on('SIGTERM', async () => {
 
 // Only start server if this file is run directly (not imported for testing)
 if (process.env.NODE_ENV !== 'test') {
+  // Log environment config at startup (avoid logging sensitive values)
+  console.log('Environment: NODE_ENV=%s PORT=%s', process.env.NODE_ENV || 'undefined', port);
+  console.log('Environment: DATABASE_URL=%s', datasourceUrl ? 'configured' : 'not set');
+  console.log('Environment: CHECKOUT_COMPLETE_WEBHOOK_URL=%s', process.env.CHECKOUT_COMPLETE_WEBHOOK_URL ? 'configured' : 'not set');
+
   app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
     startExpirationJob();
