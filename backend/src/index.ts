@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import { startExpirationJob, stopExpirationJob } from './jobs/expirationJob';
 import adminRoutes from './routes/admin';
@@ -38,6 +39,11 @@ app.use('/api/sounds', soundsRoutes); // Public endpoint for alarm sounds
 
 // Serve static files from the public directory (frontend build)
 app.use(express.static(path.join(__dirname, '../public')));
+// Fallback: serve from frontend/public in dev when backend/public isn't built yet (icons, etc.)
+const frontendPublic = path.join(__dirname, '../../frontend/public');
+if (fs.existsSync(frontendPublic)) {
+  app.use(express.static(frontendPublic));
+}
 
 // Serve index.html for all other routes (SPA fallback)
 app.get('*', (req, res) => {
