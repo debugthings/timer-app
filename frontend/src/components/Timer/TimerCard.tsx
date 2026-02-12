@@ -22,11 +22,12 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
   const operationInProgress = useRef(false); // Prevent double-clicks
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hasNotifiedRef = useRef(false);
+  const autoPausingRef = useRef(false);
 
   const { data: currentData, isLoading: isLoadingCurrent } = useQuery({
     queryKey: ['timer-current', timer.id],
     queryFn: () => getTimerCurrent(timer.id),
-    refetchInterval: 5000,
+    refetchInterval: 1000,
     enabled: !allocationProp, // Only fetch when allocation not provided by parent
   });
 
@@ -105,9 +106,10 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
   const [liveCheckoutUsed, setLiveCheckoutUsed] = useState(activeCheckout?.usedSeconds || 0);
   
   useEffect(() => {
-    // Reset notification flag when checkout changes
+    // Reset flags when checkout changes
     if (activeCheckout?.id) {
       hasNotifiedRef.current = false;
+      autoPausingRef.current = false;
     }
   }, [activeCheckout?.id]);
   
@@ -120,6 +122,23 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
 
   // When timer expires for the day: just update the card display (no alarm - expiration is informational)
 
+  // React to backend state: trigger alarm when checkout became COMPLETED from refetch (e.g. backend job)
+  const lastActiveCheckoutIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeCheckout) {
+      lastActiveCheckoutIdRef.current = activeCheckout.id;
+    } else if (lastActiveCheckoutIdRef.current) {
+      const completed = allocation?.checkouts?.find(
+        (c) => c.id === lastActiveCheckoutIdRef.current && c.status === 'COMPLETED'
+      );
+      if (completed && !hasNotifiedRef.current) {
+        hasNotifiedRef.current = true;
+        triggerAlarm(timerData.id, timerData.name, timerData.person?.name, 'completed', timerData.alarmSound);
+      }
+      lastActiveCheckoutIdRef.current = null;
+    }
+  }, [activeCheckout, allocation?.checkouts, timerData.id, timerData.name, timerData.person?.name, timerData.alarmSound, triggerAlarm]);
+
   useEffect(() => {
     if (isRunning && hasActiveEntry && activeCheckout) {
       const activeEntry = activeCheckout.entries?.find((e) => !e.endTime);
@@ -131,14 +150,19 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
         const entryElapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
         const totalCheckoutElapsed = activeCheckout.usedSeconds + entryElapsed;
         
-        // Check if checkout time is complete
+        // Check if checkout time is complete - backend is source of truth; sync via pause (backend completes)
         if (totalCheckoutElapsed >= activeCheckout.allocatedSeconds) {
           setLiveCheckoutUsed(activeCheckout.allocatedSeconds);
           
-          // Trigger alarm (plays sound and shows acknowledge UI in TimerCard - only once)
+          // Trigger alarm (react to completion)
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
             triggerAlarm(timerData.id, timerData.name, timerData.person?.name, 'completed', timerData.alarmSound);
+          }
+          // Sync with backend - pause will complete when time ran out
+          if (!autoPausingRef.current) {
+            autoPausingRef.current = true;
+            pauseCheckout(activeCheckout.id).then(invalidateCurrent).catch(console.error);
           }
         } else {
           setLiveCheckoutUsed(totalCheckoutElapsed);

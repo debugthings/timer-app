@@ -126,3 +126,62 @@ export async function forceStopExpiredCheckouts(timerId: string): Promise<void> 
     });
   }
 }
+
+/**
+ * Complete checkouts that have run out of allocated time (used when UI is disconnected).
+ * Runs independently of requests - call from background job.
+ */
+export async function completeCheckoutsThatRanOutOfTime(): Promise<void> {
+  const activeCheckouts = await prisma.checkout.findMany({
+    where: {
+      status: 'ACTIVE',
+    },
+    include: {
+      entries: {
+        where: { endTime: null },
+      },
+    },
+  });
+
+  for (const checkout of activeCheckouts) {
+    if (checkout.entries.length === 0) continue;
+
+    const activeEntry = checkout.entries[0];
+    const now = new Date();
+    const entryElapsed = Math.floor((now.getTime() - activeEntry.startTime.getTime()) / 1000);
+    const totalUsedSeconds = checkout.usedSeconds + entryElapsed;
+
+    if (totalUsedSeconds < checkout.allocatedSeconds) continue; // Not yet expired
+
+    await prisma.$transaction(async (tx) => {
+      const remainingSeconds = checkout.allocatedSeconds - checkout.usedSeconds;
+      const durationSeconds = Math.min(entryElapsed, remainingSeconds);
+
+      await tx.timeEntry.update({
+        where: { id: activeEntry.id },
+        data: {
+          endTime: now,
+          durationSeconds,
+        },
+      });
+
+      const additionalSeconds = Math.min(durationSeconds, remainingSeconds);
+      if (additionalSeconds > 0) {
+        await tx.dailyAllocation.update({
+          where: { id: checkout.allocationId },
+          data: {
+            usedSeconds: { increment: additionalSeconds },
+          },
+        });
+      }
+
+      await tx.checkout.update({
+        where: { id: checkout.id },
+        data: {
+          usedSeconds: checkout.allocatedSeconds,
+          status: 'COMPLETED',
+        },
+      });
+    });
+  }
+}

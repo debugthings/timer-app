@@ -123,6 +123,15 @@ describe('Checkouts API', () => {
       expect(res.body).toHaveProperty('status', 'PAUSED');
     });
 
+    it('should complete (not pause) when time runs out', async () => {
+      const checkout = await createTestCheckout(testTimerId, { allocatedSeconds: 1, status: 'ACTIVE' });
+      await testRequest.post(`/api/checkouts/${checkout.id}/start`);
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait for time to run out
+      const res = await testRequest.post(`/api/checkouts/${checkout.id}/pause`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('status', 'COMPLETED');
+    });
+
     it('should reject pausing non-running checkout', async () => {
       const checkout = await createTestCheckout(testTimerId, { status: 'ACTIVE' });
       

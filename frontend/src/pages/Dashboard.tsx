@@ -13,7 +13,7 @@ export function Dashboard() {
   const { data: timersData, isLoading: loadingTimers } = useQuery({
     queryKey: ['timers-current'],
     queryFn: getTimersCurrent,
-    refetchInterval: 5000, // Refetch every 5 seconds with all details
+    refetchInterval: 1000, // Refetch every second
   });
 
   const timersWithCurrent = timersData?.timers ?? [];

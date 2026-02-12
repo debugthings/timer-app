@@ -15,7 +15,7 @@ export function TimerDetail() {
   const { data: currentData, isLoading } = useQuery({
     queryKey: ['timer-current', id],
     queryFn: () => getTimerCurrent(id!),
-    refetchInterval: 5000,
+    refetchInterval: 1000,
   });
 
   const timer = currentData?.timer;
@@ -25,7 +25,7 @@ export function TimerDetail() {
   const { data: auditLogs = [] } = useQuery({
     queryKey: ['auditLogs', id],
     queryFn: () => getAuditLogs(id!, 20), // Get last 20 audit events
-    refetchInterval: 10000, // Refetch every 10 seconds to show new logs
+    refetchInterval: 1000, // Refetch every second
   });
 
   const createCheckoutMutation = useMutation({

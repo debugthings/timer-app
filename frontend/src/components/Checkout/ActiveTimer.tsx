@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Checkout } from '../../types';
 import { formatTime } from '../../utils/time';
 import { startCheckout, pauseCheckout, stopCheckout } from '../../services/api';
-import { showNotification, normalizeAlarmSound } from '../../utils/notifications';
-import { useTimerExpiration } from '../../hooks/useTimerExpiration';
+import { normalizeAlarmSound } from '../../utils/notifications';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
 interface ActiveTimerProps {
@@ -18,20 +17,24 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
   const operationInProgress = useRef(false); // Prevent double-clicks
   const hasNotifiedRef = useRef(false);
   const autoPausingRef = useRef(false); // Prevent multiple auto-pause attempts
-  const isExpired = useTimerExpiration(checkout.timerId);
   const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
 
   const remainingSeconds = checkout.allocatedSeconds - elapsedSeconds;
   const hasActiveEntry = checkout.entries?.some((e) => !e.endTime);
 
+  const prevCheckoutIdRef = useRef<string | null>(null);
+  const lastStatusRef = useRef<string | null>(null);
   // Sync local elapsed seconds with server data when checkout changes
-  // This handles cases where you navigate away and come back
   useEffect(() => {
     setElapsedSeconds(checkout.usedSeconds);
     setIsRunning(checkout.status === 'ACTIVE');
-    // Reset notification flag when checkout changes
-    hasNotifiedRef.current = false;
-    autoPausingRef.current = false;
+    // Reset flags only when switching to a different checkout (avoid double-trigger when ACTIVE->COMPLETED)
+    if (checkout.id !== prevCheckoutIdRef.current) {
+      prevCheckoutIdRef.current = checkout.id;
+      hasNotifiedRef.current = false;
+      autoPausingRef.current = false;
+      lastStatusRef.current = null;
+    }
   }, [checkout.id, checkout.usedSeconds, checkout.status]);
 
   // Cleanup alarm on unmount is handled by GlobalAlarmProvider
@@ -71,8 +74,14 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
           // Auto-stop when time runs out
           setElapsedSeconds(checkout.allocatedSeconds);
 
+          // Trigger alarm (checkout completed - same behavior as TimerCard)
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            const alarmSound = normalizeAlarmSound(checkout.timer?.alarmSound || 'helium');
+            triggerAlarm(checkout.timerId, checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'completed', alarmSound);
+          }
+
           // Auto-pause (only once, prevent race condition)
-          // Alarm notifications are handled by TimerCard on dashboard
           if (!autoPausingRef.current) {
             autoPausingRef.current = true;
             handlePause();
@@ -84,21 +93,23 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
 
       return () => clearInterval(interval);
     }
-  }, [isRunning, hasActiveEntry, checkout.allocatedSeconds, checkout.usedSeconds, checkout.entries, checkout.id, handlePause]);
+  }, [isRunning, hasActiveEntry, checkout.allocatedSeconds, checkout.usedSeconds, checkout.entries, checkout.id, checkout.timerId, checkout.timer?.alarmSound, checkout.timer?.name, checkout.timer?.person?.name, handlePause, triggerAlarm]);
 
-  // Handle timer expiration
+  // React to backend state: trigger alarm when checkout became COMPLETED from refetch (e.g. backend job)
   useEffect(() => {
-    if (isExpired && (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED')) {
-      // Timer expired, show notification and alarm
-      const alarmSound = normalizeAlarmSound(checkout.timer?.alarmSound || 'helium');
-      triggerAlarm(checkout.timerId, checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'expired', alarmSound);
-      showNotification('Timer Expired', {
-        body: 'This timer has expired for today and has been stopped.',
-        requireInteraction: true,
-      });
-      onUpdate(); // Refresh to show cancelled status
+    const wasActive = lastStatusRef.current === 'ACTIVE' || lastStatusRef.current === 'PAUSED';
+    if (checkout.status === 'ACTIVE' || checkout.status === 'PAUSED') {
+      lastStatusRef.current = checkout.status;
     }
-  }, [isExpired, checkout.status, checkout.id, checkout.timer?.alarmSound, checkout.timer?.name, checkout.timer?.person?.name, triggerAlarm, onUpdate]);
+    if (checkout.status === 'COMPLETED' && wasActive && !hasNotifiedRef.current) {
+      hasNotifiedRef.current = true;
+      const alarmSound = normalizeAlarmSound(checkout.timer?.alarmSound || 'helium');
+      triggerAlarm(checkout.timerId, checkout.timer?.name || 'Timer', checkout.timer?.person?.name, 'completed', alarmSound);
+    }
+    if (checkout.status === 'COMPLETED' || checkout.status === 'CANCELLED') {
+      lastStatusRef.current = null;
+    }
+  }, [checkout.status, checkout.timerId, checkout.timer?.alarmSound, checkout.timer?.name, checkout.timer?.person?.name, triggerAlarm]);
 
   const handleAcknowledgeAlarm = () => {
     acknowledgeAlarm();
@@ -152,13 +163,9 @@ export function ActiveTimer({ checkout, onUpdate }: ActiveTimerProps) {
             <div className="flex items-center gap-3">
               <span className="text-2xl">⏰</span>
               <div>
-                <h3 className="font-bold text-red-700 dark:text-red-400">
-                  {alarmState?.reason === 'expired' ? 'Timer Expired!' : "Time's Up!"}
-                </h3>
+                <h3 className="font-bold text-red-700 dark:text-red-400">Time's Up!</h3>
                 <p className="text-sm text-red-600 dark:text-red-300">
-                  {alarmState?.reason === 'expired'
-                    ? 'This timer has expired for today and has been stopped.'
-                    : `Checkout time has ended for ${alarmState?.personName || 'timer'}.`}
+                  Checkout time has ended for {alarmState?.personName || 'timer'}.
                 </p>
               </div>
             </div>

@@ -311,11 +311,14 @@ router.post('/:id/pause', async (req, res) => {
         checkout.allocatedSeconds
       );
 
+      // Backend controls outcome: when time runs out, complete (not pause)
+      const status = newUsedSeconds >= checkout.allocatedSeconds ? 'COMPLETED' : 'PAUSED';
+
       return tx.checkout.update({
         where: { id },
         data: {
           usedSeconds: newUsedSeconds,
-          status: 'PAUSED',
+          status,
         },
         include: {
           entries: true,
@@ -323,13 +326,17 @@ router.post('/:id/pause', async (req, res) => {
       });
     });
 
-    // Log the checkout pause action
+    // Log the checkout pause/complete action
     try {
+      const action = updatedCheckout.status === 'COMPLETED' ? 'checkout_complete' : 'checkout_pause';
+      const details = updatedCheckout.status === 'COMPLETED'
+        ? `Checkout completed - ${durationSeconds} seconds used (time ran out)`
+        : `Paused checkout after ${durationSeconds} seconds`;
       await prisma.auditLog.create({
         data: {
           timerId: updatedCheckout.timerId,
-          action: 'checkout_pause',
-          details: `Paused checkout after ${durationSeconds} seconds`,
+          action,
+          details,
         },
       });
     } catch (logError) {

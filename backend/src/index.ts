@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
+import { startExpirationJob, stopExpirationJob } from './jobs/expirationJob';
 import adminRoutes from './routes/admin';
 import peopleRoutes from './routes/people';
 import timerRoutes from './routes/timers';
@@ -49,11 +50,13 @@ app.get('*', (req, res) => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
+  stopExpirationJob();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
+  stopExpirationJob();
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -62,5 +65,6 @@ process.on('SIGTERM', async () => {
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
+    startExpirationJob();
   });
 }

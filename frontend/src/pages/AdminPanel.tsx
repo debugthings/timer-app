@@ -122,7 +122,7 @@ export function AdminPanel() {
   const { data: auditLogs = [] } = useQuery({
     queryKey: ['adminAuditLogs'],
     queryFn: () => getAdminAuditLogs(50),
-    refetchInterval: 10000,
+    refetchInterval: 1000,
   });
 
   const createPersonMutation = useMutation({
