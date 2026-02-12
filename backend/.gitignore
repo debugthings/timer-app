@@ -5,3 +5,7 @@ dist
 *.db-journal
 public/*
 !public/.gitkeep
+!public/favicon.png
+!public/pwa-192x192.png
+!public/pwa-512x512.png
+!public/notification-icon.png

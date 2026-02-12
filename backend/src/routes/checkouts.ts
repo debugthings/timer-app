@@ -731,9 +731,12 @@ router.post('/:id/force-expired', requireAdminPin, async (req, res) => {
       console.error('Failed to log force expired:', logError);
     }
 
-    notifyCheckoutComplete(updatedCheckout.id);
-
-    res.json(updatedCheckout);
+    if (updatedCheckout) {
+      notifyCheckoutComplete(updatedCheckout.id);
+      res.json(updatedCheckout);
+    } else {
+      res.status(500).json({ error: 'Failed to force checkout expired' });
+    }
   } catch (error: any) {
     console.error('Force expired checkout error:', error);
     res.status(500).json({ error: 'Failed to force checkout expired' });
