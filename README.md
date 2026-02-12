@@ -497,9 +497,10 @@ When a timer has an expiration time set:
 - `DELETE /api/people/:id` - Delete person (admin)
 
 ### Timers
-- `GET /api/timers` - List all timers with today's allocations
+- `GET /api/timers` - List all timers (without allocations)
+- `GET /api/timers/current` - Get all timers with their current allocations (dashboard bulk fetch)
 - `GET /api/timers/:id` - Get timer with today's allocation
-- `GET /api/timers/:id/current` - Get timer with today's allocation and active status
+- `GET /api/timers/:id/current` - Get single timer with today's allocation and active status
 - `GET /api/timers/:id/allocation` - Get allocation for specific date
 - `POST /api/timers` - Create timer (admin)
 - `PUT /api/timers/:id` - Update timer (admin)

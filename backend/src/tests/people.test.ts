@@ -97,8 +97,8 @@ describe('People API', () => {
         .set('X-Admin-PIN', adminPin)
         .send({ name: 'New Name' });
       
-      // Returns 500 due to Prisma error - this is acceptable
-      expect([404, 500]).toContain(res.status);
+      expect(res.status).toBe(404);
+      expect(res.body).toHaveProperty('error', 'Person not found');
     });
   });
 

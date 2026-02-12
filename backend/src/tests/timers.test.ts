@@ -43,7 +43,25 @@ describe('Timers API', () => {
       expect(res.body).toHaveLength(1);
       expect(res.body[0]).toHaveProperty('name', 'Screen Time');
       expect(res.body[0]).toHaveProperty('defaultDailySeconds', 7200);
-      // GET /timers returns timers without allocations; cards fetch /current for allocation data
+      // GET /timers returns timers without allocations; dashboard uses /current for full data
+    });
+  });
+
+  describe('GET /api/timers/current', () => {
+    it('should return all timers with their current allocations', async () => {
+      await createTestTimer(testPersonId, { name: 'Timer A', defaultDailySeconds: 3600 });
+      await createTestTimer(testPersonId, { name: 'Timer B', defaultDailySeconds: 7200 });
+      
+      const res = await testRequest.get('/api/timers/current');
+      
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('timers');
+      expect(res.body.timers).toHaveLength(2);
+      expect(res.body.timers[0]).toHaveProperty('timer');
+      expect(res.body.timers[0]).toHaveProperty('allocation');
+      expect(res.body.timers[0].timer).toHaveProperty('name');
+      expect(res.body.timers[0].allocation).toHaveProperty('active');
+      expect(res.body.timers[0].allocation).toHaveProperty('totalSeconds');
     });
   });
 

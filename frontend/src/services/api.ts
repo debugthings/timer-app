@@ -64,6 +64,14 @@ export const deletePerson = (id: string) =>
 // Timers
 export const getTimers = () => api.get<Timer[]>('/timers').then((r) => r.data);
 
+export interface TimerWithCurrent {
+  timer: Timer;
+  allocation: DailyAllocation & { active: boolean; reason?: 'before_start' | 'after_expiration' };
+}
+
+export const getTimersCurrent = () =>
+  api.get<{ timers: TimerWithCurrent[] }>('/timers/current').then((r) => r.data);
+
 export const getTimer = (id: string) => api.get<Timer>(`/timers/${id}`).then((r) => r.data);
 
 export const createTimer = (data: CreateTimerRequest) =>

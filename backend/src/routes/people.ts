@@ -86,7 +86,10 @@ router.put('/:id', requireAdminPin, async (req, res) => {
     });
 
     res.json(person);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return res.status(404).json({ error: 'Person not found' });
+    }
     console.error('Update person error:', error);
     res.status(500).json({ error: 'Failed to update person' });
   }
@@ -102,7 +105,10 @@ router.delete('/:id', requireAdminPin, async (req, res) => {
     });
 
     res.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return res.status(404).json({ error: 'Person not found' });
+    }
     console.error('Delete person error:', error);
     res.status(500).json({ error: 'Failed to delete person' });
   }

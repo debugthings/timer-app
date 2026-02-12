@@ -20,6 +20,11 @@ export async function computeAllocationActive(allocationId: string): Promise<All
           schedules: true,
         },
       },
+      checkouts: {
+        where: {
+          status: { in: ['ACTIVE', 'PAUSED'] },
+        },
+      },
     },
   });
 
@@ -37,9 +42,11 @@ export async function computeAllocationActive(allocationId: string): Promise<All
     return { active: false, reason: availability.reason };
   }
 
-  // Past expiration time → active = false (always, overrides manual active)
+  // Past expiration time → active = false. Only force-stop if there's an active session.
   if (availability.reason === 'after_expiration') {
-    await forceStopExpiredCheckouts(timerId);
+    if (allocation.checkouts.length > 0) {
+      await forceStopExpiredCheckouts(timerId);
+    }
     return { active: false, reason: 'after_expiration' };
   }
 

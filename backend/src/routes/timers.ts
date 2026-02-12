@@ -1,7 +1,7 @@
 import express from 'express';
 import { prisma } from '../index';
 import { requireAdminPin } from '../middleware/adminAuth';
-import { isTimerExpired, forceStopExpiredCheckouts, getTimerAvailability } from '../utils/timerExpiration';
+import { isTimerExpired, getTimerAvailability } from '../utils/timerExpiration';
 import { computeAllocationActive } from '../utils/allocationActivity';
 import { getStartOfDay, getSecondsForDay } from '../utils/dateTime';
 
@@ -21,7 +21,85 @@ const VALID_ALARM_SOUNDS = [
   'triton', 'umbriel', 'ursaminor', 'vespa',
 ] as const;
 
-// Get all timers (without allocations - cards fetch /current per timer)
+// Helper to get or create today's allocation for a timer
+async function getOrCreateTodayAllocation(timerId: string) {
+  const today = await getStartOfDay();
+  let allocation = await prisma.dailyAllocation.findUnique({
+    where: {
+      timerId_date: {
+        timerId,
+        date: today,
+      },
+    },
+    include: {
+      checkouts: {
+        include: {
+          entries: {
+            where: { endTime: null },
+          },
+        },
+      },
+    },
+  });
+
+  if (!allocation) {
+    const totalSeconds = await getSecondsForDay(timerId, today);
+    allocation = await prisma.dailyAllocation.create({
+      data: {
+        timerId,
+        date: today,
+        totalSeconds,
+        usedSeconds: 0,
+      },
+      include: {
+        checkouts: {
+          include: {
+            entries: {
+              where: { endTime: null },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  return allocation;
+}
+
+// Get all timers with their current allocations (dashboard bulk fetch)
+router.get('/current', async (req, res) => {
+  try {
+    const timers = await prisma.timer.findMany({
+      include: {
+        person: true,
+        schedules: { orderBy: { dayOfWeek: 'asc' } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const timersWithAllocations = await Promise.all(
+      timers.map(async (timer) => {
+        const allocation = await getOrCreateTodayAllocation(timer.id);
+        const { active, reason } = await computeAllocationActive(allocation.id);
+        return {
+          timer,
+          allocation: {
+            ...allocation,
+            active,
+            reason,
+          },
+        };
+      })
+    );
+
+    res.json({ timers: timersWithAllocations });
+  } catch (error) {
+    console.error('Get timers current error:', error);
+    res.status(500).json({ error: 'Failed to get timers current' });
+  }
+});
+
+// Get all timers (without allocations - dashboard uses /current for full data)
 router.get('/', async (req, res) => {
   try {
     const timers = await prisma.timer.findMany({
@@ -45,7 +123,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get current allocation for a timer (single source of truth for card state)
+// Get current allocation for a timer (used by TimerDetail, ActiveTimer - returns allocation only to avoid duplicate timer data)
 router.get('/:id/current', async (req, res) => {
   const { id } = req.params;
 
@@ -66,54 +144,11 @@ router.get('/:id/current', async (req, res) => {
       return res.status(404).json({ error: 'Timer not found' });
     }
 
-    const today = await getStartOfDay();
-    let allocation = await prisma.dailyAllocation.findUnique({
-      where: {
-        timerId_date: {
-          timerId: id,
-          date: today,
-        },
-      },
-      include: {
-        checkouts: {
-          include: {
-            entries: {
-              where: {
-                endTime: null,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!allocation) {
-      const totalSeconds = await getSecondsForDay(id, today);
-      allocation = await prisma.dailyAllocation.create({
-        data: {
-          timerId: id,
-          date: today,
-          totalSeconds,
-          usedSeconds: 0,
-        },
-        include: {
-          checkouts: {
-            include: {
-              entries: {
-                where: {
-                  endTime: null,
-                },
-              },
-            },
-          },
-        },
-      });
-    }
-
+    const allocation = await getOrCreateTodayAllocation(id);
     const { active, reason } = await computeAllocationActive(allocation.id);
 
     res.json({
-      timer,
+      timer, // TimerDetail needs full timer; keep for single-timer view
       allocation: {
         ...allocation,
         active,

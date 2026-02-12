@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getPeople, getTimers } from '../services/api';
+import { getPeople, getTimersCurrent } from '../services/api';
 import { TimerCard } from '../components/Timer/TimerCard';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Link } from 'react-router-dom';
@@ -10,23 +10,24 @@ export function Dashboard() {
     queryFn: getPeople,
   });
 
-  const { data: timers = [], isLoading: loadingTimers } = useQuery({
-    queryKey: ['timers'],
-    queryFn: getTimers,
-    refetchInterval: 5000, // Refetch every 5 seconds to keep cards updated
+  const { data: timersData, isLoading: loadingTimers } = useQuery({
+    queryKey: ['timers-current'],
+    queryFn: getTimersCurrent,
+    refetchInterval: 5000, // Refetch every 5 seconds with all details
   });
 
+  const timersWithCurrent = timersData?.timers ?? [];
   const isLoading = loadingPeople || loadingTimers;
 
   // Group timers by person
-  const timersByPerson = timers.reduce((acc, timer) => {
-    const personId = timer.personId;
+  const timersByPerson = timersWithCurrent.reduce((acc, item) => {
+    const personId = item.timer.personId;
     if (!acc[personId]) {
       acc[personId] = [];
     }
-    acc[personId].push(timer);
+    acc[personId].push(item);
     return acc;
-  }, {} as Record<string, typeof timers>);
+  }, {} as Record<string, typeof timersWithCurrent>);
 
   if (isLoading) {
     return (
@@ -52,7 +53,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {people.length === 0 || timers.length === 0 ? (
+        {people.length === 0 || timersWithCurrent.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
             <div className="max-w-md mx-auto">
               <svg
@@ -93,8 +94,8 @@ export function Dashboard() {
               <div key={person.id} className="mb-8">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{person.name}</h2>
                 <div className="space-y-4">
-                  {personTimers.map((timer) => (
-                    <TimerCard key={timer.id} timer={timer} />
+                  {personTimers.map(({ timer, allocation }) => (
+                    <TimerCard key={timer.id} timer={timer} allocation={allocation} />
                   ))}
                 </div>
               </div>

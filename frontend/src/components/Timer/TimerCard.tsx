@@ -4,14 +4,17 @@ import { formatTime } from '../../utils/time';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { createCheckout, startCheckout, pauseCheckout, stopCheckout, updateTimerAlarmSound, createAuditLog, getTimerCurrent } from '../../services/api';
+import type { TimerWithCurrent } from '../../services/api';
 import { stopContinuousAlarm, ALARM_SOUND_LABELS, normalizeAlarmSound, playAlarmPreview } from '../../utils/notifications';
 import { useGlobalAlarm } from '../../hooks/useGlobalAlarm';
 
 interface TimerCardProps {
   timer: Timer;
+  /** When provided (from dashboard bulk fetch), use this instead of fetching /current */
+  allocation?: TimerWithCurrent['allocation'];
 }
 
-export function TimerCard({ timer }: TimerCardProps) {
+export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -19,16 +22,16 @@ export function TimerCard({ timer }: TimerCardProps) {
   const operationInProgress = useRef(false); // Prevent double-clicks
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hasNotifiedRef = useRef(false);
-  const hasExpiredAlarmRef = useRef(false);
 
   const { data: currentData, isLoading: isLoadingCurrent } = useQuery({
     queryKey: ['timer-current', timer.id],
     queryFn: () => getTimerCurrent(timer.id),
     refetchInterval: 5000,
+    enabled: !allocationProp, // Only fetch when allocation not provided by parent
   });
 
   const timerData = currentData?.timer ?? timer;
-  const allocation = currentData?.allocation;
+  const allocation = allocationProp ?? currentData?.allocation;
   const isAvailable = allocation?.active ?? true;
   const availabilityReason = allocation?.reason;
   const { alarmState, triggerAlarm, acknowledgeAlarm } = useGlobalAlarm();
@@ -48,6 +51,7 @@ export function TimerCard({ timer }: TimerCardProps) {
 
   const invalidateCurrent = () => {
     queryClient.invalidateQueries({ queryKey: ['timers'] });
+    queryClient.invalidateQueries({ queryKey: ['timers-current'] });
     queryClient.invalidateQueries({ queryKey: ['timer-current', timer.id] });
   };
 
@@ -114,15 +118,7 @@ export function TimerCard({ timer }: TimerCardProps) {
     };
   }, []);
 
-  // Trigger alarm when timer reaches end-of-day expiration (from /current allocation.active)
-  useEffect(() => {
-    const isExpired = allocation?.active === false && availabilityReason === 'after_expiration';
-    if (isExpired && !hasExpiredAlarmRef.current) {
-      hasExpiredAlarmRef.current = true;
-      triggerAlarm(timerData.id, timerData.name, timerData.person?.name, 'expired', normalizeAlarmSound(timerData.alarmSound));
-      queryClient.invalidateQueries({ queryKey: ['timer-current', timer.id] });
-    }
-  }, [allocation?.active, availabilityReason, timer.id, timerData.id, timerData.name, timerData.person?.name, timerData.alarmSound, triggerAlarm, queryClient]);
+  // When timer expires for the day: just update the card display (no alarm - expiration is informational)
 
   useEffect(() => {
     if (isRunning && hasActiveEntry && activeCheckout) {
