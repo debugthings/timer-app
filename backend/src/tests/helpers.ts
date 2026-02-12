@@ -57,7 +57,7 @@ export async function createTestPerson(name: string = 'Test Person') {
 export async function createTestTimer(personId: string, options: {
   name?: string;
   defaultDailySeconds?: number;
-  schedules?: Array<{ dayOfWeek: number; seconds: number; expirationTime?: string }>;
+  schedules?: Array<{ dayOfWeek: number; seconds: number; startTime?: string; expirationTime?: string }>;
 } = {}) {
   const {
     name = 'Test Timer',
