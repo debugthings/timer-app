@@ -601,8 +601,9 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
         </div>
 
         {/* Action buttons */}
-        {isAvailable && dailyRemainingSeconds > 0 && (
-          <div className="space-y-3">
+        <div className="space-y-3">
+          {isAvailable && dailyRemainingSeconds > 0 && (
+            <>
             {/* Action buttons row */}
             <div className="flex gap-2 items-center">
               {/* Main action buttons */}
@@ -648,19 +649,6 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
                   </div>
                 )}
               </div>
-
-              {/* Small details button */}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate(`/timer/${timer.id}`);
-                }}
-                className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 font-medium text-sm"
-                title="View details"
-              >
-                📊
-              </button>
             </div>
 
             {/* Quick checkout buttons */}
@@ -685,8 +673,23 @@ export function TimerCard({ timer, allocation: allocationProp }: TimerCardProps)
                 </div>
               </div>
             )}
+            </>
+          )}
+          {/* Details button - always visible */}
+          <div className="flex justify-end">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/timer/${timer.id}`);
+              }}
+              className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium text-sm"
+              title="View details"
+            >
+              Details
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </>
   );
