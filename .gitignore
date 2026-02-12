@@ -1,8 +1,50 @@
+# Dependencies
 node_modules
-.DS_Store
-.env
-*.log
+
+# Build outputs
 dist
+dist-ssr
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database
 *.db
 *.db-journal
+
+# Test & coverage
 coverage
+.nyc_output
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Vite / PWA dev
+dev-dist/
+
+# IDE / Editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+Thumbs.db
