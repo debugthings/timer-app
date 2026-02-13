@@ -20,19 +20,6 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Check if timer is available (not expired or before start time)
-    const availability = await getTimerAvailability(timerId);
-    if (!availability.available) {
-      const errorMsg = availability.reason === 'before_start' 
-        ? 'Timer is not yet available for today'
-        : 'Timer has expired for today';
-      return res.status(403).json({ 
-        error: errorMsg,
-        available: false,
-        reason: availability.reason,
-      });
-    }
-
     const timer = await prisma.timer.findUnique({
       where: { id: timerId },
     });
@@ -41,11 +28,49 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Timer not found' });
     }
 
+    // Get or create today's allocation (needed for availability check and creation)
+    const today = await getStartOfDay();
+    let allocation = await prisma.dailyAllocation.findUnique({
+      where: {
+        timerId_date: {
+          timerId,
+          date: today,
+        },
+      },
+    });
+
+    if (!allocation) {
+      const totalSeconds = await getSecondsForDay(timerId, today);
+      allocation = await prisma.dailyAllocation.create({
+        data: {
+          timerId,
+          date: today,
+          totalSeconds,
+          usedSeconds: 0,
+        },
+      });
+    }
+
+    // Check if timer is available - respect manualOverride='active' (admin forced active outside window)
+    const manualOverride = allocation.manualOverride as 'active' | 'expired' | null;
+    if (manualOverride !== 'active') {
+      const availability = await getTimerAvailability(timerId);
+      if (!availability.available) {
+        const errorMsg = availability.reason === 'before_start'
+          ? 'Timer is not yet available for today'
+          : 'Timer has expired for today';
+        return res.status(403).json({
+          error: errorMsg,
+          available: false,
+          reason: availability.reason,
+        });
+      }
+    }
+
     // Use transaction for checkout creation to prevent race conditions
     const checkout = await prisma.$transaction(async (tx) => {
-      // Get or create today's allocation
-      const today = await getStartOfDay();
-      let allocation = await tx.dailyAllocation.findUnique({
+      // Re-fetch allocation inside transaction for consistency
+      let alloc = await tx.dailyAllocation.findUnique({
         where: {
           timerId_date: {
             timerId,
@@ -54,9 +79,9 @@ router.post('/', async (req, res) => {
         },
       });
 
-      if (!allocation) {
+      if (!alloc) {
         const totalSeconds = await getSecondsForDay(timerId, today);
-        allocation = await tx.dailyAllocation.create({
+        alloc = await tx.dailyAllocation.create({
           data: {
             timerId,
             date: today,
@@ -69,16 +94,16 @@ router.post('/', async (req, res) => {
       // Check if enough time is available (including active checkouts)
       const activeCheckouts = await tx.checkout.findMany({
         where: {
-          allocationId: allocation.id,
+          allocationId: alloc.id,
           status: {
             in: ['ACTIVE', 'PAUSED'],
           },
         },
       });
-      
+
       const reservedSeconds = activeCheckouts.reduce((sum, c) => sum + c.allocatedSeconds, 0);
-      const remainingSeconds = allocation.totalSeconds - allocation.usedSeconds - reservedSeconds;
-      
+      const remainingSeconds = alloc.totalSeconds - alloc.usedSeconds - reservedSeconds;
+
       if (allocatedSeconds > remainingSeconds) {
         throw new Error(`Not enough time remaining: ${remainingSeconds}`);
       }
@@ -87,7 +112,7 @@ router.post('/', async (req, res) => {
       return tx.checkout.create({
         data: {
           timerId,
-          allocationId: allocation.id,
+          allocationId: alloc.id,
           allocatedSeconds,
           usedSeconds: 0,
           status: 'ACTIVE',
