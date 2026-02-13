@@ -177,6 +177,7 @@ router.post('/:id/start', async (req, res) => {
       const checkout = await tx.checkout.findUnique({
         where: { id },
         include: {
+          allocation: true,
           entries: {
             where: {
               endTime: null,
@@ -189,13 +190,16 @@ router.post('/:id/start', async (req, res) => {
         throw new Error('NOT_FOUND');
       }
 
-      // Check if timer is available
-      const availability = await getTimerAvailability(checkout.timerId);
-      if (!availability.available) {
-        if (availability.reason === 'before_start') {
-          throw new Error('NOT_YET_AVAILABLE');
-        } else {
-          throw new Error('EXPIRED');
+      // Check if timer is available - respect manualOverride='active' (admin forced active outside window)
+      const manualOverride = checkout.allocation.manualOverride as 'active' | 'expired' | null;
+      if (manualOverride !== 'active') {
+        const availability = await getTimerAvailability(checkout.timerId);
+        if (!availability.available) {
+          if (availability.reason === 'before_start') {
+            throw new Error('NOT_YET_AVAILABLE');
+          } else {
+            throw new Error('EXPIRED');
+          }
         }
       }
 

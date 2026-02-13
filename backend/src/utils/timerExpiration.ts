@@ -108,7 +108,9 @@ export async function getTimerAvailability(timerId: string): Promise<{
   return { available: true };
 }
 
-// Force stop all active checkouts for an expired timer (uses transaction)
+// Force stop all active checkouts for an expired timer (uses transaction).
+// When expiration time elapses (including for forced-active allocations), we complete
+// the checkouts, record time used, and clear manualOverride on allocations.
 export async function forceStopExpiredCheckouts(timerId: string): Promise<void> {
   const activeCheckouts = await prisma.checkout.findMany({
     where: {
@@ -127,11 +129,24 @@ export async function forceStopExpiredCheckouts(timerId: string): Promise<void> 
   });
 
   if (activeCheckouts.length > 0) {
+    const allocationIds = [...new Set(activeCheckouts.map((c) => c.allocationId))];
+
     await prisma.$transaction(async (tx) => {
       for (const checkout of activeCheckouts) {
-        await endCheckoutWithEntry(checkout, tx, 'CANCELLED');
+        await endCheckoutWithEntry(checkout, tx, 'COMPLETED');
+      }
+      // Clear forced-active state when expiration elapses
+      for (const allocationId of allocationIds) {
+        await tx.dailyAllocation.update({
+          where: { id: allocationId },
+          data: { manualOverride: 'expired' },
+        });
       }
     });
+
+    for (const checkout of activeCheckouts) {
+      notifyCheckoutComplete(checkout.id);
+    }
   }
 }
 

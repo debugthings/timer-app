@@ -95,7 +95,7 @@ describe('Timer Expiration', () => {
   });
 
   describe('forceStopExpiredCheckouts', () => {
-    it('should cancel active checkouts when timer is expired', async () => {
+    it('should complete active checkouts when timer is expired', async () => {
       // Start at 2 PM (within window), create active checkout, then move to 8 PM (expired)
       setTestTime('2026-02-09T19:00:00.000Z');
 
@@ -129,8 +129,51 @@ describe('Timer Expiration', () => {
         include: { entries: true },
       });
 
-      expect(updated?.status).toBe('CANCELLED');
+      expect(updated?.status).toBe('COMPLETED');
       expect(updated?.entries.every((e) => e.endTime !== null)).toBe(true);
+    });
+
+    it('should clear manualOverride when forced-active allocation expires', async () => {
+      // Timer forced active before start, create checkout, then expiration time passes
+      setTestTime('2026-02-09T14:00:00.000Z'); // 9 AM ET, before 12:00 start
+
+      const person = await createTestPerson();
+      const timer = await createTestTimer(person.id, {
+        schedules: [
+          {
+            dayOfWeek: 1,
+            seconds: 3600,
+            startTime: '12:00',
+            expirationTime: '18:00',
+          },
+        ],
+      });
+      const checkout = await createTestCheckout(timer.id, { status: 'ACTIVE' });
+      await prisma.dailyAllocation.update({
+        where: { id: checkout.allocationId },
+        data: { manualOverride: 'active' },
+      });
+      await prisma.timeEntry.create({
+        data: {
+          checkoutId: checkout.id,
+          startTime: new Date('2026-02-09T14:00:00.000Z'),
+        },
+      });
+
+      // Move time to 8 PM (after 18:00 expiration)
+      setTestTime('2026-02-10T01:00:00.000Z');
+
+      await forceStopExpiredCheckouts(timer.id);
+
+      const updatedCheckout = await prisma.checkout.findUnique({
+        where: { id: checkout.id },
+      });
+      const updatedAllocation = await prisma.dailyAllocation.findUnique({
+        where: { id: checkout.allocationId },
+      });
+
+      expect(updatedCheckout?.status).toBe('COMPLETED');
+      expect(updatedAllocation?.manualOverride).toBe('expired');
     });
   });
 });
