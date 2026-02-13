@@ -229,6 +229,7 @@ export function AdminPanel() {
       updateAllocation(timerId, { totalSeconds, ...(date && { date }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timers'] });
+      queryClient.invalidateQueries({ queryKey: ['timer-current'] });
     },
   });
 
