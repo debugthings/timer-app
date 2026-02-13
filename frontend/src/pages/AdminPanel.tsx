@@ -941,8 +941,8 @@ export function AdminPanel() {
                         </div>
                       </div>
 
-                      {/* Quick Time Adjustments */}
-                      {currentDayTimer.todayAllocation && currentDayTimer.todayAllocation.totalSeconds > currentDayTimer.todayAllocation.usedSeconds && (
+                      {/* Quick Time Adjustments - always show so admin can add time even when out */}
+                      {currentDayTimer.todayAllocation && (
                         <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
                           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Adjust:</div>
                           <div className="flex flex-wrap gap-1">
